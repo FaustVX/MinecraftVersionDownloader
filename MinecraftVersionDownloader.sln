@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.29209.152
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MinecraftVersionDownloader.App", "MinecraftVersionDownloader.App\MinecraftVersionDownloader.App.csproj", "{44F8A354-20F3-4120-8A74-F5A50CC55E77}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MinecraftVersionDownloader.All", "MinecraftVersionDownloader.All\MinecraftVersionDownloader.All.csproj", "{B6CCC667-0B47-4AC2-8DD5-56C47AF6AE05}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{44F8A354-20F3-4120-8A74-F5A50CC55E77}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{44F8A354-20F3-4120-8A74-F5A50CC55E77}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{44F8A354-20F3-4120-8A74-F5A50CC55E77}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{44F8A354-20F3-4120-8A74-F5A50CC55E77}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B6CCC667-0B47-4AC2-8DD5-56C47AF6AE05}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B6CCC667-0B47-4AC2-8DD5-56C47AF6AE05}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B6CCC667-0B47-4AC2-8DD5-56C47AF6AE05}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B6CCC667-0B47-4AC2-8DD5-56C47AF6AE05}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {CBD1E19A-C064-4C04-A844-E4F806CC1F73}
+	EndGlobalSection
+EndGlobal
