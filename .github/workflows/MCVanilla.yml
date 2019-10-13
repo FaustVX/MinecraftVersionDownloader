@@ -1,0 +1,25 @@
+  
+name: UploadToMCVanillaRepo
+
+on: [push]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+    
+    steps:
+    - run: git clone https://${{ secrets.TOKEN }}@github.com/FaustVX/MinecraftVanillaDatapack.git
+    - uses: actions/checkout@v1
+    - uses: actions/setup-dotnet@v1.0.2
+      with:
+        dotnet-version: '3.0.100'
+    - name: Build program
+      run: |
+        cd ../MinecraftVersionDownloader/MinecraftVersionDownloader.App
+        dotnet build -c Release
+        ls -la
+    - name: Execute program
+      run: |
+        cd MinecraftVersionDownloader.App
+        dotnet run -c Release -v q ../../MinecraftVanillaDatapack assets data pack. version.json
