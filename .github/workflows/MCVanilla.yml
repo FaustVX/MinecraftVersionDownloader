@@ -1,7 +1,11 @@
   
 name: UploadToMCVanillaRepo
 
-on: [push]
+on:
+  push:
+    paths: .github/workflows/**
+  schedule:
+  - cron: '*/30 15-20 * * *'
 
 jobs:
   build:
@@ -10,16 +14,15 @@ jobs:
     
     steps:
     - run: git clone https://${{ secrets.TOKEN }}@github.com/FaustVX/MinecraftVanillaDatapack.git
-    - uses: actions/checkout@v1
+    - run: git clone https://${{ secrets.TOKEN }}@github.com/FaustVX/MinecraftVersionDownloader.git
     - uses: actions/setup-dotnet@v1.0.2
       with:
         dotnet-version: '3.0.100'
     - name: Build program
       run: |
-        cd ../MinecraftVersionDownloader/MinecraftVersionDownloader.App
+        cd ./MinecraftVersionDownloader/MinecraftVersionDownloader.App
         dotnet build -c Release
-        ls -la
     - name: Execute program
       run: |
-        cd MinecraftVersionDownloader.App
+        cd ./MinecraftVersionDownloader/MinecraftVersionDownloader.App
         dotnet run -c Release -v q ../../MinecraftVanillaDatapack assets data pack. version.json
