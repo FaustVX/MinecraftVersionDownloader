@@ -29,6 +29,18 @@ namespace MinecraftVersionDownloader.All
                 Process.Start(startInfo).WaitForExit();
             }
 
+            public static void Init(string? name = null)
+            {
+                var startInfo = new ProcessStartInfo("git", $"init {name ?? ""}");
+                Process.Start(startInfo).WaitForExit();
+            }
+
+            public static void Clone(string server, bool checkout = true)
+            {
+                var startInfo = new ProcessStartInfo("git", $"clone{(checkout ? " " : " -n ")}{server}");
+                Process.Start(startInfo).WaitForExit();
+            }
+
             public static void Commit(string message, DateTime date)
             {
                 var startInfo = new ProcessStartInfo("git", $"commit -m \"{message}\" --allow-empty --date=\"{date.ToUniversalTime():R}\"");

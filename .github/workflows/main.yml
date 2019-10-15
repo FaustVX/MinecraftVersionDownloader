@@ -1,0 +1,22 @@
+  
+name: TestGit
+
+on: [push]
+
+jobs:
+  build:
+
+    runs-on: windows-latest
+    
+    steps:
+    - uses: actions/checkout@v1
+    - uses: actions/setup-dotnet@v1.0.2
+    - name: Setup Nuget.exe
+      uses: warrenbuckley/Setup-Nuget@v1
+    - run: |
+        nuget sources Add -Name "GitHub" -Source "https://nuget.pkg.github.com/FaustVX/index.json" -UserName FaustVX -Password ${{ secrets.TOKEN }}
+        nuget setApiKey ${{ secrets.TOKEN }} -source "GitHub"
+    - name: build
+      run: dotnet build
+    - name: test
+      run: dotnet test
