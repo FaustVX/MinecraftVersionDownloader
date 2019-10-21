@@ -31,46 +31,6 @@ namespace MinecraftVersionDownloader.All
                     yield return item;
         }
 
-        public static T HeadTail<T>(this T[] array, out T[] tail)
-        {
-            tail = array[1..];
-            return array[0];
-        }
-
-        public static T[] HeadsTail<T>(this T[] array, out T tail)
-        {
-            tail = array[^1];
-            return array[..^1];
-        }
-
-        public static T HeadTail<T>(this IEnumerable<T> source, out IEnumerable<T> tail)
-        {
-            tail = source.Skip(1);
-            return source.First();
-
-            var enumerator = source.GetEnumerator();
-
-            if (!enumerator.MoveNext())
-                throw new InvalidOperationException();
-
-            var head = enumerator.Current;
-
-            tail = Tail(enumerator);
-            return head;
-
-            static IEnumerable<T> Tail(IEnumerator<T> source)
-            {
-                while (source.MoveNext())
-                    yield return source.Current;
-            }
-        }
-
-        public static IEnumerable<T> HeadsTail<T>(this IEnumerable<T> source, out T tail)
-        {
-            tail = source.Last();
-            return source.SkipLast(1);
-        }
-
         public static bool ModifyReadOnlyProperty<TThis, TProperty>(this TThis @this, Expression<Func<TThis, TProperty>> expression, in TProperty value)
             where TThis : notnull
             => ModifyReadOnlyProperty(@this, expression.Body, value);

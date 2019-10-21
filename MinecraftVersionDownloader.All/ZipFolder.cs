@@ -3,6 +3,7 @@ using ICSharpCode.SharpZipLib.Zip;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using HeadsTails;
 
 namespace MinecraftVersionDownloader.All
 {

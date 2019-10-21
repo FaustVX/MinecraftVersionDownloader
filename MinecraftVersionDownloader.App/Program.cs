@@ -7,6 +7,7 @@ using System.Linq;
 using System.Diagnostics;
 using MinecraftVersionDownloader.All;
 using GitNet = Git.Net.Git;
+using HeadsTails;
 
 namespace MinecraftVersionDownloader.App
 {
