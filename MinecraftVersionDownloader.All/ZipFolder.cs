@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using HeadsTails;
+using ModifyReadonlyProperties;
 
 namespace MinecraftVersionDownloader.All
 {
