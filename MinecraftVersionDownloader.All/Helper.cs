@@ -111,5 +111,21 @@ namespace MinecraftVersionDownloader.All
                 return t.GetFields(flags).Concat(GetAllFieldsImpl(t.BaseType));
             }
         }
+
+        public static IEnumerable<T> IfEmpty<T>(this IEnumerable<T> source, Action empty, Action nonEmpty)
+        {
+            var isEmpty = true;
+            
+            foreach (var item in source)
+            {
+                isEmpty = false;
+                yield return item;
+            }
+
+            if (isEmpty)
+                empty();
+            else
+                nonEmpty();
+        }
     }
 }
