@@ -10,7 +10,7 @@ on:
 jobs:
   build:
 
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     
     steps:
     - run: |
@@ -21,6 +21,10 @@ jobs:
     - uses: actions/setup-dotnet@v1.0.2
       with:
         dotnet-version: '3.0.100'
+    - uses: warrenbuckley/Setup-Nuget@v1
+    - run: |
+        nuget sources Add -Name "GitHub" -Source "https://nuget.pkg.github.com/FaustVX/index.json" -UserName FaustVX -Password ${{ secrets.TOKEN }}
+        nuget setApiKey ${{ secrets.TOKEN }} -source "GitHub"
     - name: Build program
       run: |
         cd ./MinecraftVersionDownloader/MinecraftVersionDownloader.App

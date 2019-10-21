@@ -1,22 +1,18 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using static MinecraftVersionDownloader.All.Helper;
-using FaustVX.Temp;
+using System.Linq;
 
 namespace MinecraftVersionDownloader.Test
 {
     [TestClass]
     public class UnitTest1
     {
-        private static void Prepare(System.Action action)
-        {
-            using var dir = TemporaryDirectory.CreateTemporaryDirectory();
-            System.Console.WriteLine(dir);
-            System.Environment.CurrentDirectory = dir;
-            action();
-        }
 
         [TestMethod]
-        public void GitInit()
-            => Prepare(() => Git.Init());
+        public void IfEmpty()
+        {
+            Enumerable.Empty<object>().IfEmpty(() => Assert.IsTrue(true), () => Assert.IsTrue(false));
+            Enumerable.Repeat(new object(), 1).IfEmpty(() => Assert.IsFalse(true), () => Assert.IsFalse(false));
+        }
     }
 }

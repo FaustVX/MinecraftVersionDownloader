@@ -6,6 +6,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using GitNet = Git.Net.Git;
 
 namespace MinecraftVersionDownloader.All
 {
@@ -38,7 +39,7 @@ namespace MinecraftVersionDownloader.All
         private static string? LastCommitMessage()
         {
 
-            if (Helper.Git.GetLastCommit() is string data && !data.StartsWith("fatal:"))
+            if (GitNet.GetLastCommit() is string data && !data.StartsWith("fatal:"))
                 return data.Split(' ')[1];
             return null;
         }
@@ -100,8 +101,8 @@ namespace MinecraftVersionDownloader.All
                 }
             }
 
-            Helper.Git.AddAll();
-            Helper.Git.Commit(version.Id, version.ReleaseTime);
+            GitNet.AddAll();
+            GitNet.Commit(version.Id, version.ReleaseTime);
 
             Console.Beep();
             Console.CursorVisible = true;

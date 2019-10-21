@@ -6,6 +6,7 @@ using ICSharpCode.SharpZipLib.Core;
 using System.Linq;
 using System.Diagnostics;
 using MinecraftVersionDownloader.All;
+using GitNet = Git.Net.Git;
 
 namespace MinecraftVersionDownloader.App
 {
@@ -45,14 +46,14 @@ namespace MinecraftVersionDownloader.App
 
                 Console.WriteLine(TimeSpan.FromTicks(Stopwatch.GetTimestamp() - startTime));
 
-                Helper.Git.AddAll();
-                Helper.Git.Commit(version.Id, version.ReleaseTime);
-                Helper.Git.AddTag(packages.Assets, force:true);
+                GitNet.AddAll();
+                GitNet.Commit(version.Id, version.ReleaseTime);
+                GitNet.AddTag(packages.Assets, force:true);
 
                 DeleteFiles();
             }
 
-            Helper.Git.Push(force:true);
+            GitNet.Push(force:true);
 
             //Console.ReadLine();
 
@@ -69,11 +70,11 @@ namespace MinecraftVersionDownloader.App
             }
         }
 
-        private static string LastCommitMessage()
-            => Helper.Git.GetLastCommit().Split(' ')[1];
+        private static string? LastCommitMessage()
+            => GitNet.GetLastCommit()?.Split(' ')[1];
 
         private static bool CompareLastGitCommitMessage(string version)
-            => !(Helper.Git.GetLastCommit()?.Contains(version, StringComparison.InvariantCultureIgnoreCase) ?? false);
+            => !(GitNet.GetLastCommit()?.Contains(version, StringComparison.InvariantCultureIgnoreCase) ?? false);
 
         private static long UnzipFromStream(Stream zipStream, params string[] folderToUnzip)
         {
