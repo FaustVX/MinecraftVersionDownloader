@@ -51,15 +51,16 @@ namespace MinecraftVersionDownloader.App
 
                 Console.WriteLine(TimeSpan.FromTicks(Stopwatch.GetTimestamp() - startTime));
 
-                GitNet.AddAll();
+                GitNet.Add(all:true);
                 GitNet.Commit(version.Id, version.ReleaseTime);
-                GitNet.AddTag(packages.Assets, force:true);
+                GitNet.Tag(packages.Assets, force:true);
 
                 DeleteFiles();
             }
 
 #if !DEBUG
-            GitNet.Push(force:true);
+            if (GitNet.Push(force:false))
+                GitNet.Push(force:true, tags:true);
 #endif
 
             //Console.ReadLine();

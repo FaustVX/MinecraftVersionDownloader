@@ -2,8 +2,6 @@
 name: UploadToMCVanillaRepo
 
 on:
-  push:
-    paths: .github/workflows/**
   schedule:
   - cron: '*/30 12-16 * * *'
 
@@ -16,8 +14,6 @@ jobs:
     - run: |
         git config --global user.email "jodu035@gmail.com"
         git config --global user.name "FaustVX"
-    # - run: git clone https://${{ secrets.TOKEN }}@github.com/FaustVX/MinecraftVanillaDatapack.git
-    - run: git clone https://${{ secrets.TOKEN }}@github.com/FaustVX/MinecraftVersionDownloader.git
     - uses: actions/setup-dotnet@v1.0.2
       with:
         dotnet-version: '3.0.100'
@@ -25,11 +21,10 @@ jobs:
     - run: |
         nuget sources Add -Name "GitHub" -Source "https://nuget.pkg.github.com/FaustVX/index.json" -UserName FaustVX -Password ${{ secrets.TOKEN }}
         nuget setApiKey ${{ secrets.TOKEN }} -source "GitHub"
+    - uses: actions/checkout@v1
     - name: Build program
-      run: |
-        cd ./MinecraftVersionDownloader/MinecraftVersionDownloader.App
-        dotnet build -c Release
+      run: dotnet build -c Release
     - name: Execute program
       run: |
-        cd ./MinecraftVersionDownloader/MinecraftVersionDownloader.App
+        cd ./MinecraftVersionDownloader.App
         dotnet run -c Release -v q https://${{ secrets.TOKEN }}@github.com/FaustVX/MinecraftVanillaDatapack.git assets data pack. version.json

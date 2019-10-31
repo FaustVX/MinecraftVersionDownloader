@@ -2,7 +2,6 @@
 using ICSharpCode.SharpZipLib.Zip;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -18,8 +17,7 @@ namespace MinecraftVersionDownloader.All
             if (lastVersion is null)
             {
                 DeleteFiles(true);
-                var startInfo = new ProcessStartInfo("git", "init");
-                Process.Start(startInfo).WaitForExit();
+                GitNet.Init();
             }
 
             var lastCount = 1;
@@ -101,7 +99,7 @@ namespace MinecraftVersionDownloader.All
                 }
             }
 
-            GitNet.AddAll();
+            GitNet.Add(all: true);
             GitNet.Commit(version.Id, version.ReleaseTime);
 
             Console.Beep();
