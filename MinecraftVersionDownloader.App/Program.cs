@@ -8,6 +8,7 @@ using System.Diagnostics;
 using MinecraftVersionDownloader.All;
 using GitNet = Git.Net.Git;
 using HeadsTails;
+using FaustVX.Temp;
 
 namespace MinecraftVersionDownloader.App
 {
@@ -16,11 +17,14 @@ namespace MinecraftVersionDownloader.App
         private static async Task Main(string[] args)
         {
 #if DEBUG
-            Console.ReadLine();
-            args = new[] { @"C:\Users\Jonathan\Desktop\MinecraftVanillaDatapack", "assets", "data", "pack.", "version.json" };
             Debugger.Break();
 #endif
-            Environment.CurrentDirectory = new DirectoryInfo(args.HeadTail(out args)).FullName;
+            using var git = TemporaryDirectory.CreateTemporaryDirectory();
+            Environment.CurrentDirectory = git.Path.FullName;
+            GitNet.Clone(args.HeadTail(out args), checkout: false, localDirectory: ".");
+#if DEBUG
+            GitNet.Reset(^1, GitNet.ResetMode.Hard);
+#endif
             long startTime = 0;
             foreach (var version in (await MinecraftHelper.GetVersionsInfoAsync(reverse: true))
                 .SkipWhile(v => v.Id != LastCommitMessage())
@@ -54,7 +58,9 @@ namespace MinecraftVersionDownloader.App
                 DeleteFiles();
             }
 
+#if !DEBUG
             GitNet.Push(force:true);
+#endif
 
             //Console.ReadLine();
 
