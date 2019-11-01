@@ -19,8 +19,7 @@ namespace MinecraftVersionDownloader.App
 #if DEBUG
             Debugger.Break();
 #endif
-            using var git = TemporaryDirectory.CreateTemporaryDirectory();
-            Environment.CurrentDirectory = git.Path.FullName;
+            using var git = TemporaryDirectory.CreateTemporaryDirectory(setCurrentDirectory: true);
             GitNet.Clone(args.HeadTail(out args), checkout: false, localDirectory: ".");
 #if DEBUG
             GitNet.Reset(^1, GitNet.ResetMode.Hard);
