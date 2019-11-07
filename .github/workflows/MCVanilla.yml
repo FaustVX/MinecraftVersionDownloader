@@ -3,7 +3,7 @@ name: UploadToMCVanillaRepo
 
 on:
   schedule:
-  - cron: '*/30 12-16 * * *'
+  - cron: '0 12-19 * * 1-5'
 
 jobs:
   build:
