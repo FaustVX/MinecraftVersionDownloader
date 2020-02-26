@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Threading.Tasks;
 using ICSharpCode.SharpZipLib.Zip;
@@ -20,6 +20,7 @@ namespace MinecraftVersionDownloader.App
             Debugger.Break();
 #endif
             using var git = TemporaryDirectory.CreateTemporaryDirectory(setCurrentDirectory: true);
+            System.Console.WriteLine(git);
             GitNet.Clone(args.HeadTail(out args), checkout: false, localDirectory: ".");
 #if DEBUG
             GitNet.Reset(^1, GitNet.ResetMode.Hard);
@@ -29,14 +30,9 @@ namespace MinecraftVersionDownloader.App
                 .SkipWhile(v => v.Id != LastCommitMessage())
                 .Skip(1))
             {
-                Console.WriteLine($"Latest version: {version.Id}");
-
-                //if (CompareLastGitCommitMessage(version.Id))
-                //    continue;
+                Console.WriteLine($"Next version: {version.Id}");
 
                 DeleteFiles();
-
-                var releaseTime = version.ReleaseTime;
 
                 var packages = await version.Version;
 
@@ -45,17 +41,42 @@ namespace MinecraftVersionDownloader.App
 
                 Console.ResetColor();
 
-                using (var file = File.CreateText("clientMapping.txt"))
-                    file.Write(await packages.Client.TXT!.GetStringAsync());
+                GitNet.Add(all: true);
+
+                var tmp = Directory.GetParent(git).CreateSubdirectory("tmp");
+                using (var file = File.Create(Path.Combine(tmp.FullName, "server.jar")))
+                using (var jar = await packages.Server!.JAR.GetStreamAsync())
+                {
+                    Memory<byte> block = new byte[8*1024];
+                    var written = 0;
+                    while (written < packages.Server!.JarSize)
+                    {
+                        var size = await jar.ReadAsync(block);
+                        written += size;
+                        await file.WriteAsync(block.Slice(0, size));
+                    }
+                }
+
+                System.Console.WriteLine("Create 'generated' files");
+
+                var extract = Process.Start(@"java", "-cp ../tmp/server.jar net.minecraft.data.Main --all");
+                extract.WaitForExit();
+
+                if(packages.Client.TXT is Uri txtClient)
+                    File.WriteAllText(Path.Combine("generated", "clientMapping.txt"), await txtClient.GetStringAsync());
+
+                if(packages.Server?.TXT is Uri txtServer)
+                    File.WriteAllText(Path.Combine("generated", "serverMapping.txt"), await txtServer.GetStringAsync());
 
                 Console.WriteLine(TimeSpan.FromTicks(Stopwatch.GetTimestamp() - startTime));
 
-                GitNet.Add(all:true);
+                GitNet.Add(@"generated/reports/*");
+                GitNet.Add(@"generated/*Mapping.txt");
                 GitNet.Commit(version.Id, version.ReleaseTime);
                 GitNet.Tag(packages.Assets, force:true);
-
-                DeleteFiles();
             }
+
+            DeleteFiles();
 
 #if !DEBUG
             if (GitNet.Push(force:false))

@@ -19,6 +19,11 @@ jobs:
     - run: |
         nuget sources Add -Name "GitHub" -Source "https://nuget.pkg.github.com/FaustVX/index.json" -UserName FaustVX -Password ${{ secrets.TOKEN }}
         nuget setApiKey ${{ secrets.TOKEN }} -source "GitHub"
+    - uses: actions/setup-java@v1
+      with:
+        java-version: '9.0.4'
+        java-package: jdk
+        architecture: x64
     - name: build
       run: dotnet build
     - name: test

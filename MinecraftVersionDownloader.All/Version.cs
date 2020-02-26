@@ -34,9 +34,11 @@ namespace MinecraftVersionDownloader.All
         {
             JAR = side.First["url"].ToObject<Uri>();
             TXT = side.Next is JProperty mapping && mapping.Name == $"{side.Name}_mappings" ? mapping?.First["url"].ToObject<Uri>() : null;
+            JarSize = side.First["size"].ToObject<int>();
         }
 
         public Uri JAR { get; }
         public Uri? TXT { get; }
+        public int JarSize { get; }
     }
 }
