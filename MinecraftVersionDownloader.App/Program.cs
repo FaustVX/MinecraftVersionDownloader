@@ -55,6 +55,9 @@ namespace MinecraftVersionDownloader.App
 
                 GitNet.Add(all: true);
 
+DlDerver:
+                try
+                {
                 using (var file = File.Create(Path.Combine(tmp.FullName, "server.jar")))
                 using (var jar = await packages.Server!.JAR.GetStreamAsync())
                 {
@@ -67,24 +70,35 @@ namespace MinecraftVersionDownloader.App
                         await file.WriteAsync(block.Slice(0, size));
                     }
                 }
+                }
+                catch (System.IO.IOException)
+                {
+                    File.AppendAllText(Path.Combine(tmp.FullName, "log.log"), "IOException");
+                    goto DlDerver;
+                }
 
                 System.Console.WriteLine("Create 'generated' files");
+                var generated = ((DirectoryInfo)git).CreateSubdirectory("generated");
 
                 var extract = Process.Start(@"java", "-cp ../tmp/server.jar net.minecraft.data.Main --all");
-                extract.WaitForExit();
 
                 if(packages.Client.TXT is Uri txtClient)
-                    File.WriteAllText(Path.Combine("generated", "clientMapping.txt"), await txtClient.GetStringAsync());
+                    File.WriteAllText(Path.Combine(generated.FullName, "clientMapping.txt"), await txtClient.GetStringAsync());
 
                 if(packages.Server?.TXT is Uri txtServer)
-                    File.WriteAllText(Path.Combine("generated", "serverMapping.txt"), await txtServer.GetStringAsync());
+                    File.WriteAllText(Path.Combine(generated.FullName, "serverMapping.txt"), await txtServer.GetStringAsync());
 
-                Console.WriteLine(TimeSpan.FromTicks(Stopwatch.GetTimestamp() - startTime));
+                GitNet.Add(@"generated/*Mapping.txt");
+
+                extract.WaitForExit();
+
+                ExtractRegisties(new FileInfo(Path.Combine(generated.FullName, "reports", "registries.json")));
 
                 GitNet.Add(@"generated/reports/*");
-                GitNet.Add(@"generated/*Mapping.txt");
                 GitNet.Commit(version.Id, version.ReleaseTime);
                 GitNet.Tag(packages.Assets, force:true);
+
+                Console.WriteLine(TimeSpan.FromTicks(Stopwatch.GetTimestamp() - startTime));
             }
 
             DeleteFiles();
@@ -169,6 +183,7 @@ namespace MinecraftVersionDownloader.App
                     }
                     catch (Newtonsoft.Json.JsonReaderException)
                     {
+                        File.AppendAllText(new FileInfo(Path.Combine(Environment.CurrentDirectory, "..", "tmp", "log.log")).FullName, "JsonReaderException");
                         using var fileStream = file.Create();
                         stream.Position = 0;
                         StreamUtils.Copy(stream, fileStream, buffer);
@@ -216,6 +231,20 @@ namespace MinecraftVersionDownloader.App
             Console.ForegroundColor = ConsoleColor.Green;
             Console.WriteLine($"Unzipped");
             return startTime;
+        }
+
+        private static void ExtractRegisties(FileInfo registries)
+        {
+            if (!registries.Exists)
+                return;
+            
+            var reports = registries.Directory;
+
+            foreach (var obj in JObject.Parse(File.ReadAllText(registries.FullName)).Properties())
+            {
+                var (key, entries) = (obj.Name.Split(':')[1], (JObject)obj.Value["entries"]);
+                File.WriteAllLines(Path.Combine(reports.FullName, $"{key}.txt"), entries.Properties().Select(p => p.Name));
+            }
         }
     }
 }
