@@ -9,6 +9,7 @@ using MinecraftVersionDownloader.All;
 using GitNet = Git.Net.Git;
 using HeadsTails;
 using FaustVX.Temp;
+using Newtonsoft.Json.Linq;
 
 namespace MinecraftVersionDownloader.App
 {
@@ -16,21 +17,32 @@ namespace MinecraftVersionDownloader.App
     {
         private static async Task Main(string[] args)
         {
+#if LOCAL
 #if DEBUG
             Debugger.Break();
 #endif
+            args = @"https://github.com/FaustVX/MinecraftVanillaDatapack.git assets data pack. version.json".Split();
+            var git = new DirectoryInfo(Environment.CurrentDirectory).CreateSubdirectory("MC");
+            Environment.CurrentDirectory = git.FullName;
+            var tmp = git.Parent.CreateSubdirectory("tmp");
+#else
             using var git = TemporaryDirectory.CreateTemporaryDirectory(setCurrentDirectory: true);
-            System.Console.WriteLine(git);
+            var tmp = Directory.GetParent(git).CreateSubdirectory("tmp");
+#endif
+            System.Console.WriteLine(Environment.CurrentDirectory);
             GitNet.Clone(args.HeadTail(out args), checkout: false, localDirectory: ".");
 #if DEBUG
             GitNet.Reset(^1, GitNet.ResetMode.Hard);
 #endif
             long startTime = 0;
+            var lastCommit = LastCommitMessage();
             foreach (var version in (await MinecraftHelper.GetVersionsInfoAsync(reverse: true))
-                .SkipWhile(v => v.Id != LastCommitMessage())
+                .SkipWhile(v => v.Id != lastCommit)
                 .Skip(1))
             {
                 Console.WriteLine($"Next version: {version.Id}");
+                Console.Title = $"{lastCommit} => {version.Id}";
+                lastCommit = version.Id;
 
                 DeleteFiles();
 
@@ -43,7 +55,6 @@ namespace MinecraftVersionDownloader.App
 
                 GitNet.Add(all: true);
 
-                var tmp = Directory.GetParent(git).CreateSubdirectory("tmp");
                 using (var file = File.Create(Path.Combine(tmp.FullName, "server.jar")))
                 using (var jar = await packages.Server!.JAR.GetStreamAsync())
                 {
@@ -139,11 +150,67 @@ namespace MinecraftVersionDownloader.App
                 Console.Write($"{entryName}: ");
                 Console.Write($"Unzipping");
 
-                using var streamWriter = File.Create(fullZipToPath);
-                StreamUtils.Copy(zipInputStream, streamWriter, buffer);
+                var file = new FileInfo(fullZipToPath);
+                if(file.Extension is ".json" || file.Extension is ".mcmeta")
+                {
+                    using var stream = new MemoryStream();
+                    StreamUtils.Copy(zipInputStream, stream, buffer);
+                    stream.Flush();
+                    stream.Position = 0;
+                    
+                    using var textReader = new StreamReader(stream);
+                    using var jsonReader = new Newtonsoft.Json.JsonTextReader(textReader);
+                    try
+                    {
+                        var obj = (JObject)JObject.ReadFrom(jsonReader);
+                        Sort(obj, isAscending: true);
+                        
+                        File.WriteAllText(file.FullName, obj.ToString());
+                    }
+                    catch (Newtonsoft.Json.JsonReaderException)
+                    {
+                        using var fileStream = file.Create();
+                        stream.Position = 0;
+                        StreamUtils.Copy(stream, fileStream, buffer);
+                    }
+                }
+                else
+                {
+                    using var stream = file.Create();
+                    StreamUtils.Copy(zipInputStream, stream, buffer);
+                }
+                
 
                 Console.ForegroundColor = ConsoleColor.Green;
                 Console.WriteLine($" X");
+
+                static void Sort(JObject obj, bool isAscending)
+                {
+                    var props = obj.Properties().ToList();
+
+                    foreach (var prop in props)
+                        obj.Remove(prop.Name);
+                    
+                    foreach (var prop in isAscending ? props.OrderBy(p => p.Name) : props.OrderByDescending(p => p.Name))
+                    {
+                        obj.Add(prop);
+                        TrySort(prop.Value, isAscending);
+                    }
+
+                    static void TrySort(JToken token, bool isAscending)
+                    {
+                        switch (token)
+                        {
+                            case JObject obj:
+                                Sort(obj, isAscending);
+                                break;
+                            case JArray array:
+                                foreach (var elem in array)
+                                    TrySort(elem, isAscending);
+                                break;
+                        }
+                    }
+                }
             }
 
             Console.ForegroundColor = ConsoleColor.Green;
