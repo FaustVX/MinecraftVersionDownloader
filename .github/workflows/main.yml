@@ -32,4 +32,5 @@ jobs:
       run: |
         cd ./MinecraftVersionDownloader.App
         dotnet run -c Debug -v q https://${{ secrets.TOKEN }}@github.com/FaustVX/MinecraftVanillaDatapack.git assets data pack. version.json
+        dotnet run -c Release -v q https://${{ secrets.TOKEN }}@github.com/FaustVX/MinecraftVanillaDatapack.git assets data pack. version.json
 

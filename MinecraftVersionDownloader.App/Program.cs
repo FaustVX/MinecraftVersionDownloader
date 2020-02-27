@@ -92,7 +92,11 @@ DlDerver:
 
                 extract.WaitForExit();
 
-                ExtractRegisties(new FileInfo(Path.Combine(generated.FullName, "reports", "registries.json")));
+                var reports = generated.CreateSubdirectory("reports");
+
+                ExtractItems(new FileInfo(Path.Combine(reports.FullName, "items.json")));
+                ExtractRegisties(new FileInfo(Path.Combine(reports.FullName, "registries.json")));
+                ExtractBlocks(new FileInfo(Path.Combine(reports.FullName, "blocks.json")));
 
                 GitNet.Add(@"generated/reports/*");
                 GitNet.Commit(version.Id, version.ReleaseTime);
@@ -233,18 +237,44 @@ DlDerver:
             return startTime;
         }
 
+        private static void ExtractItems(FileInfo items)
+        {
+            if (!items.Exists)
+                return;
+            
+            var reports = items.Directory.CreateSubdirectory("registries");
+
+            var obj = JObject.Parse(File.ReadAllText(items.FullName));
+            File.WriteAllLines(Path.Combine(reports.FullName, $"items.txt"), obj.Properties().Select(p => p.Name));
+        }
+
         private static void ExtractRegisties(FileInfo registries)
         {
             if (!registries.Exists)
                 return;
             
-            var reports = registries.Directory;
+            var reports = registries.Directory.CreateSubdirectory("registries");
 
             foreach (var obj in JObject.Parse(File.ReadAllText(registries.FullName)).Properties())
             {
                 var (key, entries) = (obj.Name.Split(':')[1], (JObject)obj.Value["entries"]);
                 File.WriteAllLines(Path.Combine(reports.FullName, $"{key}.txt"), entries.Properties().Select(p => p.Name));
             }
+        }
+
+        private static void ExtractBlocks(FileInfo blocks)
+        {
+            if (!blocks.Exists)
+                return;
+            
+            var reports = blocks.Directory;
+
+            var jObj = JObject.Parse(File.ReadAllText(blocks.FullName));
+
+            foreach (var obj in jObj.Properties())
+                obj.Value = obj.Value["properties"] ?? new JObject();
+            
+            File.WriteAllText(Path.Combine(reports.FullName, "blocks.simple.json"), jObj.ToString());
         }
     }
 }
