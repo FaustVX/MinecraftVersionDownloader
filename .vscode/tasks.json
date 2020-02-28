@@ -9,7 +9,8 @@
                 "build",
                 "${workspaceFolder}/MinecraftVersionDownloader.App/MinecraftVersionDownloader.App.csproj",
                 "/property:GenerateFullPaths=true",
-                "/consoleloggerparameters:NoSummary"
+                "/consoleloggerparameters:NoSummary",
+                "/p:DefineConstants=LOCAL"
             ],
             "problemMatcher": "$msCompile"
         },

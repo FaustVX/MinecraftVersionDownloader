@@ -1,3 +1,6 @@
+#if LOCAL
+#define DEBUG
+#endif
 using System;
 using System.IO;
 using System.Threading.Tasks;
@@ -32,7 +35,7 @@ namespace MinecraftVersionDownloader.App
             System.Console.WriteLine(Environment.CurrentDirectory);
             GitNet.Clone(args.HeadTail(out args), checkout: false, localDirectory: ".");
 #if DEBUG
-            GitNet.Reset(^1, GitNet.ResetMode.Hard);
+            GitNet.Reset(^1, GitNet.ResetMode.Mixed);
 #endif
             long startTime = 0;
             var lastCommit = LastCommitMessage();
@@ -55,27 +58,9 @@ namespace MinecraftVersionDownloader.App
 
                 GitNet.Add(all: true);
 
-DlDerver:
-                try
-                {
-                using (var file = File.Create(Path.Combine(tmp.FullName, "server.jar")))
+                using (var file = tmp.File("server.jar").Create())
                 using (var jar = await packages.Server!.JAR.GetStreamAsync())
-                {
-                    Memory<byte> block = new byte[8*1024];
-                    var written = 0;
-                    while (written < packages.Server!.JarSize)
-                    {
-                        var size = await jar.ReadAsync(block);
-                        written += size;
-                        await file.WriteAsync(block.Slice(0, size));
-                    }
-                }
-                }
-                catch (System.IO.IOException)
-                {
-                    File.AppendAllText(Path.Combine(tmp.FullName, "log.log"), "IOException");
-                    goto DlDerver;
-                }
+                    StreamUtils.Copy(jar, file, new byte[8 * 1024]);
 
                 System.Console.WriteLine("Create 'generated' files");
                 var generated = ((DirectoryInfo)git).CreateSubdirectory("generated");
@@ -83,10 +68,10 @@ DlDerver:
                 var extract = Process.Start(@"java", "-cp ../tmp/server.jar net.minecraft.data.Main --all");
 
                 if(packages.Client.TXT is Uri txtClient)
-                    File.WriteAllText(Path.Combine(generated.FullName, "clientMapping.txt"), await txtClient.GetStringAsync());
+                    generated.File("clientMapping.txt").WriteAllText(await txtClient.GetStringAsync());
 
                 if(packages.Server?.TXT is Uri txtServer)
-                    File.WriteAllText(Path.Combine(generated.FullName, "serverMapping.txt"), await txtServer.GetStringAsync());
+                    generated.File("serverMapping.txt").WriteAllText(await txtServer.GetStringAsync());
 
                 GitNet.Add(@"generated/*Mapping.txt");
 
@@ -94,9 +79,9 @@ DlDerver:
 
                 var reports = generated.CreateSubdirectory("reports");
 
-                ExtractItems(new FileInfo(Path.Combine(reports.FullName, "items.json")));
-                ExtractRegisties(new FileInfo(Path.Combine(reports.FullName, "registries.json")));
-                ExtractBlocks(new FileInfo(Path.Combine(reports.FullName, "blocks.json")));
+                ExtractItems(reports.File("items.json"));
+                ExtractRegisties(reports.File("registries.json"));
+                ExtractBlocks(reports.File("blocks.json"));
 
                 GitNet.Add(@"generated/reports/*");
                 GitNet.Commit(version.Id, version.ReleaseTime);
@@ -136,7 +121,7 @@ DlDerver:
         private static long UnzipFromStream(Stream zipStream, params string[] folderToUnzip)
         {
             var startTime = Stopwatch.GetTimestamp();
-            Console.WriteLine($"Unzipping in {Environment.CurrentDirectory}");
+            DebugConsole.WriteLine($"Unzipping in {Environment.CurrentDirectory}");
             using var zipInputStream = new ZipInputStream(zipStream);
             while (zipInputStream.GetNextEntry() is ZipEntry { Name: var entryName })
             {
@@ -165,8 +150,8 @@ DlDerver:
                 }
 
                 Console.ResetColor();
-                Console.Write($"{entryName}: ");
-                Console.Write($"Unzipping");
+                DebugConsole.Write($"{entryName}: ");
+                DebugConsole.Write($"Unzipping");
 
                 var file = new FileInfo(fullZipToPath);
                 if(file.Extension is ".json" || file.Extension is ".mcmeta")
@@ -183,11 +168,11 @@ DlDerver:
                         var obj = (JObject)JObject.ReadFrom(jsonReader);
                         Sort(obj, isAscending: true);
                         
-                        File.WriteAllText(file.FullName, obj.ToString());
+                        file.WriteAllText(obj.ToString());
                     }
                     catch (Newtonsoft.Json.JsonReaderException)
                     {
-                        File.AppendAllText(new FileInfo(Path.Combine(Environment.CurrentDirectory, "..", "tmp", "log.log")).FullName, "JsonReaderException");
+                        new DirectoryInfo(Environment.CurrentDirectory).Parent.Then("tmp").File("log.log").AppendAllText("JsonReaderException");
                         using var fileStream = file.Create();
                         stream.Position = 0;
                         StreamUtils.Copy(stream, fileStream, buffer);
@@ -201,7 +186,7 @@ DlDerver:
                 
 
                 Console.ForegroundColor = ConsoleColor.Green;
-                Console.WriteLine($" X");
+                DebugConsole.WriteLine($" X");
 
                 static void Sort(JObject obj, bool isAscending)
                 {
@@ -233,7 +218,7 @@ DlDerver:
             }
 
             Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine($"Unzipped");
+            DebugConsole.WriteLine($"Unzipped");
             return startTime;
         }
 
@@ -244,8 +229,8 @@ DlDerver:
             
             var reports = items.Directory.CreateSubdirectory("registries");
 
-            var obj = JObject.Parse(File.ReadAllText(items.FullName));
-            File.WriteAllLines(Path.Combine(reports.FullName, $"items.txt"), obj.Properties().Select(p => p.Name));
+            var obj = JObject.Parse(items.ReadAllText());
+            reports.File("item.txt").WriteAllLines(obj.Properties().Select(p => p.Name));
         }
 
         private static void ExtractRegisties(FileInfo registries)
@@ -255,10 +240,10 @@ DlDerver:
             
             var reports = registries.Directory.CreateSubdirectory("registries");
 
-            foreach (var obj in JObject.Parse(File.ReadAllText(registries.FullName)).Properties())
+            foreach (var obj in JObject.Parse(registries.ReadAllText()).Properties())
             {
                 var (key, entries) = (obj.Name.Split(':')[1], (JObject)obj.Value["entries"]);
-                File.WriteAllLines(Path.Combine(reports.FullName, $"{key}.txt"), entries.Properties().Select(p => p.Name));
+                reports.File($"{key}.txt").WriteAllLines(entries.Properties().Select(p => p.Name));
             }
         }
 
@@ -269,12 +254,12 @@ DlDerver:
             
             var reports = blocks.Directory;
 
-            var jObj = JObject.Parse(File.ReadAllText(blocks.FullName));
+            var jObj = JObject.Parse(blocks.ReadAllText());
 
             foreach (var obj in jObj.Properties())
                 obj.Value = obj.Value["properties"] ?? new JObject();
             
-            File.WriteAllText(Path.Combine(reports.FullName, "blocks.simple.json"), jObj.ToString());
+            reports.File("blocks.simple.json").WriteAllText(jObj.ToString());
         }
     }
 }
