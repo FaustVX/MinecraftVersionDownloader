@@ -11,7 +11,10 @@
             "preLaunchTask": "build",
             // If you have changed target frameworks, make sure to update the program path.
             "program": "${workspaceFolder}/MinecraftVersionDownloader.App/bin/Debug/netcoreapp3.0/MinecraftVersionDownloader.App.dll",
-            "args": [],
+            "args":
+                [
+                    "https://github.com/FaustVX/MinecraftVanillaDatapack.git"
+                ],
             "cwd": "${workspaceFolder}/MinecraftVersionDownloader.App",
             // For more information about the 'console' field, see https://aka.ms/VSCode-CS-LaunchJson-Console
             "console": "internalConsole",

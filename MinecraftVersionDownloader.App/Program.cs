@@ -10,7 +10,6 @@ using System.Linq;
 using System.Diagnostics;
 using MinecraftVersionDownloader.All;
 using GitNet = Git.Net.Git;
-using HeadsTails;
 using FaustVX.Temp;
 using Newtonsoft.Json.Linq;
 
@@ -24,8 +23,7 @@ namespace MinecraftVersionDownloader.App
 #if DEBUG
             Debugger.Break();
 #endif
-            args = @"https://github.com/FaustVX/MinecraftVanillaDatapack.git assets data pack. version.json".Split();
-            var git = new DirectoryInfo(Environment.CurrentDirectory).CreateSubdirectory("MC");
+            var git = new DirectoryInfo(@"D:\Desktop\MinecraftVanillaDatapack");
             Environment.CurrentDirectory = git.FullName;
             var tmp = git.Parent.CreateSubdirectory("tmp");
 #else
@@ -33,7 +31,8 @@ namespace MinecraftVersionDownloader.App
             var tmp = Directory.GetParent(git).CreateSubdirectory("tmp");
 #endif
             System.Console.WriteLine(Environment.CurrentDirectory);
-            GitNet.Clone(args.HeadTail(out args), checkout: false, localDirectory: ".");
+            if(!(GitNet.Clone(args[0], checkout: false, localDirectory: ".") || GitNet.Reset(GitNet.Ref.HEAD)))
+                throw new Exception();
 #if DEBUG
             GitNet.Reset(^1, GitNet.ResetMode.Mixed);
 #endif
@@ -52,7 +51,7 @@ namespace MinecraftVersionDownloader.App
                 var packages = await version.Version;
 
                 using var jarStream = await packages.Client.JAR.GetStreamAsync();
-                startTime = UnzipFromStream(jarStream, args);
+                UnzipFromStream(jarStream, "assets data pack. version.json".Split(' '));
 
                 Console.ResetColor();
 
