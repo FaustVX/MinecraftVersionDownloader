@@ -30,6 +30,5 @@ jobs:
     - name: Build program
       run: dotnet build -c Release
     - name: Execute program
-      run: |
-        cd ./MinecraftVersionDownloader.App
-        dotnet run -c Release -v q https://${{ secrets.TOKEN }}@github.com/FaustVX/MinecraftVanillaDatapack.git
+      working-directory: ./MinecraftVersionDownloader.App
+      run: dotnet run -c Release -v q https://${{ secrets.TOKEN }}@github.com/FaustVX/MinecraftVanillaDatapack.git
