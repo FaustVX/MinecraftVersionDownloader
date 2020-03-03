@@ -21,6 +21,23 @@
             "stopAtEntry": false
         },
         {
+            "name": ".NET Core Launch (LongRun)",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build",
+            // If you have changed target frameworks, make sure to update the program path.
+            "program": "${workspaceFolder}/MinecraftVersionDownloader.App/bin/Debug/netcoreapp3.0/MinecraftVersionDownloader.App.dll",
+            "args":
+                [
+                    "https://github.com/FaustVX/MinecraftVanillaDatapack.git",
+                    "--long-run"
+                ],
+            "cwd": "${workspaceFolder}/MinecraftVersionDownloader.App",
+            // For more information about the 'console' field, see https://aka.ms/VSCode-CS-LaunchJson-Console
+            "console": "internalConsole",
+            "stopAtEntry": false
+        },
+        {
             "name": ".NET Core Attach",
             "type": "coreclr",
             "request": "attach",

@@ -28,6 +28,21 @@ namespace MinecraftVersionDownloader.All
         public static Task DownloadFileAsync(this Uri uri, FileInfo file)
             => _webClient.DownloadFileTaskAsync(uri, file.FullName);
         
+        public static IEnumerable<T> DoEvery<T>(this IEnumerable<T> source, int everyLoop, Action action)
+        {
+            using var enumerator = source.GetEnumerator();
+            for (int i = 1; enumerator.MoveNext(); i++)
+            {
+                yield return enumerator.Current;
+                if(i % everyLoop == 0)
+                    action();
+            }
+        }
+
+        public static TEnumerable If<TEnumerable>(this TEnumerable source, bool condition, Func<TEnumerable, TEnumerable> ifTrue)
+            where TEnumerable : System.Collections.IEnumerable
+            => condition ? ifTrue(source) : source;
+        
         public static string MakeRelativeTo(this FileInfo file, FileSystemInfo relativeTo)
         {
             if (relativeTo is DirectoryInfo di)

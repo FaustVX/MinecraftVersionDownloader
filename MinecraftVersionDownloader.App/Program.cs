@@ -39,7 +39,8 @@ namespace MinecraftVersionDownloader.App
             var lastCommit = LastCommitMessage();
             foreach (var version in (await MinecraftHelper.GetVersionsInfoAsync(reverse: true))
                 .SkipWhile(v => v.Id != lastCommit)
-                .Skip(1))
+                .Skip(1)
+                .If(Options.LongRun, versions => versions.DoEvery(10, () => GitNet.Push())))
             {
                 var startTime = Stopwatch.GetTimestamp();
                 Console.WriteLine($"Next version: {version.Id}");
@@ -90,6 +91,9 @@ namespace MinecraftVersionDownloader.App
                     GitNet.Tag($"Release_{packages.Id}", force:true);
 
                 Console.WriteLine(TimeSpan.FromTicks(Stopwatch.GetTimestamp() - startTime));
+#if DEBUG
+                return;
+#endif
             }
 
             DeleteFiles();
