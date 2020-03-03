@@ -20,9 +20,6 @@ namespace MinecraftVersionDownloader.App
         private static async Task Main(string[] args)
         {
 #if LOCAL
-#if DEBUG
-            Debugger.Break();
-#endif
             var git = new DirectoryInfo(@"D:\Desktop\MinecraftVanillaDatapack");
             Environment.CurrentDirectory = git.FullName;
             var tmp = git.Parent.CreateSubdirectory("tmp");
@@ -30,18 +27,21 @@ namespace MinecraftVersionDownloader.App
             using var git = TemporaryDirectory.CreateTemporaryDirectory(setCurrentDirectory: true);
             var tmp = Directory.GetParent(git).CreateSubdirectory("tmp");
 #endif
+#if DEBUG
+            Debugger.Break();
+#endif
             System.Console.WriteLine(Environment.CurrentDirectory);
             if(!(GitNet.Clone(args[0], checkout: false, localDirectory: ".") || GitNet.Reset(GitNet.Ref.HEAD)))
                 throw new Exception();
 #if DEBUG
             GitNet.Reset(^1, GitNet.ResetMode.Mixed);
 #endif
-            long startTime = 0;
             var lastCommit = LastCommitMessage();
             foreach (var version in (await MinecraftHelper.GetVersionsInfoAsync(reverse: true))
                 .SkipWhile(v => v.Id != lastCommit)
                 .Skip(1))
             {
+                var startTime = Stopwatch.GetTimestamp();
                 Console.WriteLine($"Next version: {version.Id}");
                 Console.Title = $"{lastCommit} => {version.Id}";
                 lastCommit = version.Id;
@@ -50,39 +50,44 @@ namespace MinecraftVersionDownloader.App
 
                 var packages = await version.Version;
 
-                using var jarStream = await packages.Client.JAR.GetStreamAsync();
-                UnzipFromStream(jarStream, "assets data pack. version.json".Split(' '));
-
-                Console.ResetColor();
-
-                GitNet.Add(all: true);
-
-                using (var file = tmp.File("server.jar").Create())
-                using (var jar = await packages.Server!.JAR.GetStreamAsync())
-                    StreamUtils.Copy(jar, file, new byte[8 * 1024]);
-
-                System.Console.WriteLine("Create 'generated' files");
                 var generated = ((DirectoryInfo)git).CreateSubdirectory("generated");
 
-                var extract = Process.Start(@"java", "-cp ../tmp/server.jar net.minecraft.data.Main --all");
+                var server = tmp.File("server.jar");
+                await Task.WhenAll(packages.Server!.JAR.DownloadFileAsync(server), Task.Run(async () =>
+                    {
+                        if(packages.Client.TXT is Uri txtClient)
+                            generated.File("clientMapping.txt").WriteAllText(await txtClient.GetStringAsync());
 
-                if(packages.Client.TXT is Uri txtClient)
-                    generated.File("clientMapping.txt").WriteAllText(await txtClient.GetStringAsync());
+                        if(packages.Server?.TXT is Uri txtServer)
+                            generated.File("serverMapping.txt").WriteAllText(await txtServer.GetStringAsync());
+                    }), Task.Run(async () =>
+                    {
+                        using var jarStream = await packages.Client.JAR.GetStreamAsync();
+                        UnzipFromStream(jarStream, "assets data pack. version.json".Split(' '));
 
-                if(packages.Server?.TXT is Uri txtServer)
-                    generated.File("serverMapping.txt").WriteAllText(await txtServer.GetStringAsync());
+                        Console.ResetColor();
 
-                GitNet.Add(@"generated/*Mapping.txt");
+                    }));
+                GitNet.Add(all: true);
 
-                extract.WaitForExit();
+                System.Console.WriteLine("Create 'generated' files");
+                Process.Start(@"java", $"-cp {server.MakeRelativeTo(git)} net.minecraft.data.Main --dev --reports --input {((DirectoryInfo)git).MakeRelativeTo(git)}")
+                    .WaitForExit();
 
-                var reports = generated.CreateSubdirectory("reports");
+                var reports = generated.Then("reports");
 
                 ExtractItems(reports.File("items.json"));
                 ExtractRegisties(reports.File("registries.json"));
                 ExtractBlocks(reports.File("blocks.json"));
 
                 GitNet.Add(reports.MakeRelativeTo(git));
+                GitNet.Add(generated.Then("assets").MakeRelativeTo(git));
+                GitNet.Add(generated.Then("data").MakeRelativeTo(git));
+                GitNet.Commit(version.Id, allowEmpty: true, date: version.ReleaseTime);
+
+                GitNet.Tag($"Version_{packages.Assets}", force:true);
+                if(version.Type is VersionType.Release)
+                    GitNet.Tag($"Release_{packages.Id}", force:true);
 
                 Console.WriteLine(TimeSpan.FromTicks(Stopwatch.GetTimestamp() - startTime));
             }
@@ -115,9 +120,8 @@ namespace MinecraftVersionDownloader.App
         private static bool CompareLastGitCommitMessage(string version)
             => !(GitNet.GetLastCommit()?.message.Contains(version, StringComparison.InvariantCultureIgnoreCase) ?? false);
 
-        private static long UnzipFromStream(Stream zipStream, params string[] folderToUnzip)
+        private static void UnzipFromStream(Stream zipStream, params string[] folderToUnzip)
         {
-            var startTime = Stopwatch.GetTimestamp();
             DebugConsole.WriteLine($"Unzipping in {Environment.CurrentDirectory}");
             using var zipInputStream = new ZipInputStream(zipStream);
             while (zipInputStream.GetNextEntry() is ZipEntry { Name: var entryName })
@@ -216,7 +220,6 @@ namespace MinecraftVersionDownloader.App
 
             Console.ForegroundColor = ConsoleColor.Green;
             DebugConsole.WriteLine($"Unzipped");
-            return startTime;
         }
 
         private static void ExtractItems(FileInfo items)

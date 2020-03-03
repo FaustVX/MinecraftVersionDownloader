@@ -1,9 +1,10 @@
-using Newtonsoft.Json.Linq;
+﻿using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using IO = System.IO;
 using System.Net.Http;
+using System.Net;
 using System.Threading.Tasks;
 using System.Linq;
 using System.Text;
@@ -13,6 +14,7 @@ namespace MinecraftVersionDownloader.All
     public static partial class Helper
     {
         private static readonly HttpClient _httpClient = new HttpClient();
+        private static readonly WebClient _webClient = new WebClient();
 
         public static async Task<JObject> GetJsonAsync(this Uri uri)
             => JObject.Parse(await uri.GetStringAsync());
@@ -23,6 +25,9 @@ namespace MinecraftVersionDownloader.All
         public static Task<Stream> GetStreamAsync(this Uri uri)
             => _httpClient.GetStreamAsync(uri);
 
+        public static Task DownloadFileAsync(this Uri uri, FileInfo file)
+            => _webClient.DownloadFileTaskAsync(uri, file.FullName);
+        
         public static string MakeRelativeTo(this FileInfo file, FileSystemInfo relativeTo)
         {
             if (relativeTo is DirectoryInfo di)
