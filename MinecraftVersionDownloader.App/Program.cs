@@ -82,8 +82,7 @@ namespace MinecraftVersionDownloader.App
                 ExtractRegisties(reports.File("registries.json"));
                 ExtractBlocks(reports.File("blocks.json"));
 
-                GitNet.Add(@"generated/reports/*");
-                GitNet.Commit(version.Id, out _, allowEmpty: true, date: version.ReleaseTime);
+                GitNet.Add(reports.MakeRelativeTo(git));
 
                 Console.WriteLine(TimeSpan.FromTicks(Stopwatch.GetTimestamp() - startTime));
             }
