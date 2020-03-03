@@ -84,8 +84,7 @@ namespace MinecraftVersionDownloader.App
                 ExtractBlocks(reports.File("blocks.json"));
 
                 GitNet.Add(@"generated/reports/*");
-                GitNet.Commit(version.Id, version.ReleaseTime);
-                GitNet.Tag(packages.Assets, force:true);
+                GitNet.Commit(version.Id, out _, allowEmpty: true, date: version.ReleaseTime);
 
                 Console.WriteLine(TimeSpan.FromTicks(Stopwatch.GetTimestamp() - startTime));
             }
@@ -113,10 +112,10 @@ namespace MinecraftVersionDownloader.App
         }
 
         private static string? LastCommitMessage()
-            => GitNet.GetLastCommit()?.Split(' ')[1];
+            => GitNet.GetLastCommit()?.message;
 
         private static bool CompareLastGitCommitMessage(string version)
-            => !(GitNet.GetLastCommit()?.Contains(version, StringComparison.InvariantCultureIgnoreCase) ?? false);
+            => !(GitNet.GetLastCommit()?.message.Contains(version, StringComparison.InvariantCultureIgnoreCase) ?? false);
 
         private static long UnzipFromStream(Stream zipStream, params string[] folderToUnzip)
         {
