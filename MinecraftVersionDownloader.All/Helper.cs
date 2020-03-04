@@ -132,6 +132,13 @@ namespace MinecraftVersionDownloader.All
                 nonEmpty();
         }
         
+        public static IEnumerable<(T item, int index)> WithIndex<T>(this IEnumerable<T> source, int startAt = 0)
+        {
+            using var enumerator = source.GetEnumerator();
+            for (int i = startAt; enumerator.MoveNext(); i++)
+                yield return (enumerator.Current, i);
+        }
+        
         public static DirectoryInfo Then(this DirectoryInfo directory, string next)
             => new DirectoryInfo(Path.Combine(directory.FullName, next));
         

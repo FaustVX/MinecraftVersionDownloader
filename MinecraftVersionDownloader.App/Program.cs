@@ -33,6 +33,38 @@ namespace MinecraftVersionDownloader.App
             System.Console.WriteLine(Environment.CurrentDirectory);
             if(!(GitNet.Clone(args[0], checkout: false, localDirectory: ".") || GitNet.Reset(GitNet.Ref.HEAD)))
                 throw new Exception();
+
+            if(Options.OnlyTags)
+            {
+                var lastMessage = GitNet.GetLastCommit()?.message;
+                bool? is1_8 = null;
+                foreach (var (version, indexFromHead) in (await MinecraftHelper.GetVersionsInfoAsync(reverse: false))
+                    .WithIndex()
+                    .SkipWhile(v => v.item.Id != lastMessage)
+                    .If(Options.LongRun && !Options.Debug, versions => versions.DoEvery(10, () => GitNet.Push(tags: true, force: true))))
+                {
+                    var packages = await version.Version;
+#if DEBUG
+                    var versionType = packages.Type switch
+                    {
+                        VersionType.Alpha => "α",
+                        VersionType.Beta => "β",
+                        _ => ""
+                    };
+                    System.Console.WriteLine($"{versionType}[{packages.Type} - {packages.Assets}] {version.Id}");
+#endif
+                    if(packages.Assets == "1.8")
+                        is1_8 = true;
+                    else if(is1_8 is true && packages.Assets != "1.9")
+                        break;
+                    
+                    GitNet.Tag($"Version_{packages.Assets}", @ref: ^indexFromHead, force: false);
+                    if(packages.Type is VersionType.Release)
+                        GitNet.Tag($"Release_{packages.Id}", @ref: ^indexFromHead, force: false);
+                }
+                GitNet.Push(tags: true, force: true);
+                return;
+            }
 #if DEBUG
             GitNet.Reset(^1, GitNet.ResetMode.Mixed);
 #endif
@@ -40,7 +72,7 @@ namespace MinecraftVersionDownloader.App
             foreach (var version in (await MinecraftHelper.GetVersionsInfoAsync(reverse: true))
                 .SkipWhile(v => v.Id != lastCommit)
                 .Skip(1)
-                .If(Options.LongRun, versions => versions.DoEvery(10, () => GitNet.Push())))
+                .If(Options.LongRun && !Options.Debug, versions => versions.DoEvery(10, () => GitNet.Push())))
             {
                 var startTime = Stopwatch.GetTimestamp();
                 Console.WriteLine($"Next version: {version.Id}");
