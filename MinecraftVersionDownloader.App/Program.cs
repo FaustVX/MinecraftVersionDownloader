@@ -12,6 +12,7 @@ using MinecraftVersionDownloader.All;
 using GitNet = Git.Net.Git;
 using FaustVX.Temp;
 using Newtonsoft.Json.Linq;
+using static FaustVX.Process.Process;
 
 namespace MinecraftVersionDownloader.App
 {
@@ -31,8 +32,8 @@ namespace MinecraftVersionDownloader.App
             Debugger.Break();
 #endif
             System.Console.WriteLine(Environment.CurrentDirectory);
-            if(!(GitNet.Clone(args[0], checkout: false, localDirectory: ".") || GitNet.Reset(GitNet.Ref.HEAD)))
-                throw new Exception();
+            (GitNet.Clone(args[0], checkout: false, localDirectory: ".") || GitNet.Reset(GitNet.Ref.HEAD))
+                .ThrowIfNonZero(new Exception());
 
             if(Options.OnlyTags)
             {
@@ -69,6 +70,7 @@ namespace MinecraftVersionDownloader.App
             GitNet.Reset(^1, GitNet.ResetMode.Mixed);
 #endif
             var lastCommit = LastCommitMessage();
+            var java = FaustVX.Process.Process.CreateProcess("java");
             foreach (var version in (await MinecraftHelper.GetVersionsInfoAsync(reverse: true))
                 .SkipWhile(v => v.Id != lastCommit)
                 .Skip(1)
@@ -104,8 +106,8 @@ namespace MinecraftVersionDownloader.App
                 GitNet.Add(all: true);
 
                 System.Console.WriteLine("Create 'generated' files");
-                Process.Start(@"java", $"-cp {server.MakeRelativeTo(git)} net.minecraft.data.Main --dev --reports --input {((DirectoryInfo)git).MakeRelativeTo(git)}")
-                    .WaitForExit();
+                java($"-cp {server.MakeRelativeTo(git)} net.minecraft.data.Main --dev --reports --input {((DirectoryInfo)git).MakeRelativeTo(git)}")
+                    .StartAndWaitForExit();
 
                 var reports = generated.Then("reports");
 
