@@ -99,9 +99,6 @@ namespace MinecraftVersionDownloader.App
                     {
                         using var jarStream = await packages.Client.JAR.GetStreamAsync();
                         UnzipFromStream(jarStream, "assets data pack. version.json".Split(' '));
-
-                        Console.ResetColor();
-
                     }));
                 GitNet.Add(all: true);
 
@@ -137,8 +134,6 @@ namespace MinecraftVersionDownloader.App
                 GitNet.Push(force:true, tags:true);
 #endif
 
-            //Console.ReadLine();
-
             static void DeleteFiles()
             {
                 var root = new DirectoryInfo(".");
@@ -165,14 +160,9 @@ namespace MinecraftVersionDownloader.App
             while (zipInputStream.GetNextEntry() is ZipEntry { Name: var entryName })
             {
                 Console.ResetColor();
-                //Console.Write($"{entryName}: ");
 
                 if (!folderToUnzip.Any(entryName.StartsWith))
-                {
-                    //Console.ForegroundColor = ConsoleColor.Red;
-                    //Console.WriteLine($"Skipped");
                     continue;
-                }
 
                 var buffer = new byte[4*1024];
 
@@ -182,81 +172,21 @@ namespace MinecraftVersionDownloader.App
                     Directory.CreateDirectory(directoryName);
 
                 if (Path.GetFileName(fullZipToPath).Length == 0)
-                {
-                    //Console.ForegroundColor = ConsoleColor.Red;
-                    //Console.WriteLine($"Skipped folder");
                     continue;
-                }
 
                 Console.ResetColor();
                 DebugConsole.Write($"{entryName}: ");
                 DebugConsole.Write($"Unzipping");
 
-                var file = new FileInfo(fullZipToPath);
-                if(file.Extension is ".json" || file.Extension is ".mcmeta")
-                {
-                    using var stream = new MemoryStream();
+                using (var stream = new FileInfo(fullZipToPath).Create())
                     StreamUtils.Copy(zipInputStream, stream, buffer);
-                    stream.Flush();
-                    stream.Position = 0;
-                    
-                    using var textReader = new StreamReader(stream);
-                    using var jsonReader = new Newtonsoft.Json.JsonTextReader(textReader);
-                    try
-                    {
-                        var obj = (JObject)JObject.ReadFrom(jsonReader);
-                        Sort(obj, isAscending: true);
-                        
-                        file.WriteAllText(obj.ToString());
-                    }
-                    catch (Newtonsoft.Json.JsonReaderException)
-                    {
-                        new DirectoryInfo(Environment.CurrentDirectory).Parent.Then("tmp").File("log.log").AppendAllText("JsonReaderException");
-                        using var fileStream = file.Create();
-                        stream.Position = 0;
-                        StreamUtils.Copy(stream, fileStream, buffer);
-                    }
-                }
-                else
-                {
-                    using var stream = file.Create();
-                    StreamUtils.Copy(zipInputStream, stream, buffer);
-                }
-                
 
                 Console.ForegroundColor = ConsoleColor.Green;
                 DebugConsole.WriteLine($" X");
-
-                static void Sort(JObject obj, bool isAscending)
-                {
-                    var props = obj.Properties().ToList();
-
-                    foreach (var prop in props)
-                        obj.Remove(prop.Name);
-                    
-                    foreach (var prop in isAscending ? props.OrderBy(p => p.Name) : props.OrderByDescending(p => p.Name))
-                    {
-                        obj.Add(prop);
-                        TrySort(prop.Value, isAscending);
-                    }
-
-                    static void TrySort(JToken token, bool isAscending)
-                    {
-                        switch (token)
-                        {
-                            case JObject obj:
-                                Sort(obj, isAscending);
-                                break;
-                            case JArray array:
-                                foreach (var elem in array)
-                                    TrySort(elem, isAscending);
-                                break;
-                        }
-                    }
-                }
             }
 
             Console.ForegroundColor = ConsoleColor.Green;
+            Console.ResetColor();
             DebugConsole.WriteLine($"Unzipped");
         }
 
