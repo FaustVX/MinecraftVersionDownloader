@@ -13,6 +13,7 @@ using GitNet = Git.Net.Git;
 using FaustVX.Temp;
 using Newtonsoft.Json.Linq;
 using static FaustVX.Process.Process;
+using System.Collections.Generic;
 
 namespace MinecraftVersionDownloader.App
 {
@@ -111,6 +112,7 @@ namespace MinecraftVersionDownloader.App
                 ExtractItems(reports.File("items.json"));
                 ExtractRegisties(reports.File("registries.json"));
                 ExtractBlocks(reports.File("blocks.json"));
+                ExtractLootTables((DirectoryInfo)git, generated, "data", "minecraft", "loot_tables");
 
                 GitNet.Add(reports.MakeRelativeTo(git));
                 GitNet.Add(generated.Then("assets").MakeRelativeTo(git));
@@ -228,6 +230,113 @@ namespace MinecraftVersionDownloader.App
                 obj.Value = obj.Value["properties"] ?? new JObject();
             
             reports.File("blocks.simple.json").WriteAllText(jObj.ToString());
+        }
+
+        private static void ExtractLootTables(DirectoryInfo git, DirectoryInfo generated, params string[] relativeFolders)
+        {
+            git = git.Then(relativeFolders);
+            if(!git.Exists)
+                return;
+            generated = generated.Then(relativeFolders);
+
+            foreach (var folder in git.EnumerateDirectories("*", SearchOption.TopDirectoryOnly))
+                ExtractLootTables(git, git, generated, folder.Name);
+
+            static void ExtractLootTables(DirectoryInfo lootTable, DirectoryInfo currentDir, DirectoryInfo generated, string relativeFolder)
+            {
+                currentDir = currentDir.Then(relativeFolder);
+                generated = generated.CreateSubdirectory(relativeFolder);
+
+                foreach (var folder in currentDir.EnumerateDirectories("*", SearchOption.TopDirectoryOnly))
+                    ExtractLootTables(lootTable, currentDir, generated, folder.Name);
+
+                foreach (var file in currentDir.EnumerateFiles("*.json", SearchOption.TopDirectoryOnly))
+                    WriteToFile(ExtractFile(file), generated.File(file.Name));
+                
+                Dictionary<string, (float weight, float qty)> ExtractFile(FileInfo file)
+                {
+                    var json = JObject.Parse(file.ReadAllText());
+                    var items = new Dictionary<string, (float weight, float qty)>();
+                    if((JArray)json["pools"] is null)
+                        return items;
+
+                    foreach (var pool in ((JArray)json["pools"]).Cast<JObject>())
+                    {
+                        var rolls = GetAverage(pool["rolls"]) ?? 1;
+                        foreach (var entry in ((JArray)pool["entries"]).Cast<JObject>())
+                        {
+                            var setCount = GetFunction(entry, "set_count")?["count"];
+                            
+                            switch (entry.Value<string>("type").Split(':')[^1])
+                            {
+                                case "item":
+                                    AddItemWeight((string)entry.Value<string>((object)"name"), entry.Value<float>((object)"weight"), GetAverage(setCount) ?? 1);
+                                    break;
+                                case "loot_table":
+                                {
+                                    var name = entry.Value<string>("name");
+                                    var weight = entry.Value<float>("weight");
+                                    foreach (var item in ExtractFile(lootTable.File(name.Split(':')[^1] + ".json")))
+                                        AddItemWeight(item.Key, item.Value.weight * weight, item.Value.qty);
+                                    break;
+                                }
+                                case "empty":
+                                    AddItemWeight((string)"", entry.Value<float>((object)"weight"), GetAverage(setCount) ?? 1);
+                                    break;
+                            }
+
+                            void AddItemWeight(string name, float weight, float qty)
+                            {
+                                if(GetAverage(GetFunction(entry, "set_data")?["data"]) is float d)
+                                    name += ":" + d;
+                                if(GetFunction(entry, "set_nbt")?.Value<string>("tag") is string n)
+                                    name += n;
+                                if(GetAverage(GetFunction(entry, "enchant_with_levels")?["levels"]) is float l)
+                                    name += $"/enchant:{l:#.#}L";
+                                
+                                if(items.TryGetValue(name, out var value))
+                                    items[name] = ((weight * rolls) + value.weight, (value.weight * value.qty + weight * rolls * qty) / (value.weight + weight * rolls));
+                                else
+                                    items.Add(name, (weight * rolls, qty));
+                            }
+                        }
+
+                        static JObject? GetFunction(JObject entry, string function)
+                            => ((JArray)entry["functions"])
+                                ?.Cast<JObject>()
+                                .FirstOrDefault(func => func.Value<string>("function")
+                                    .Split(':')[^1] == function);
+
+                        static float? GetAverage(JToken? token)
+                            => token switch
+                            {
+                                JObject obj => (obj.Value<float>("max") - obj.Value<float>("min")) / 2 + obj.Value<float>("min"),
+                                JToken{ Type: JTokenType.Integer } t => t.Value<float>(),
+                                JToken{ Type: JTokenType.Float } t => t.Value<float>(),
+                                _ => null,
+                            };
+                    }
+
+                    return items;
+                }
+
+                void WriteToFile(Dictionary<string, (float weight, float qty)> datas, FileInfo file)
+                {
+                    var totalWeight = datas.Select(kvp => kvp.Value.weight).Sum();
+
+                    var jObj = new JObject();
+                    foreach (var (id, (weight, qty)) in datas)
+                    {
+                        var obj = new JObject();
+                        obj.Add("weight", weight is 0 ? float.PositiveInfinity : weight);
+                        obj.Add("qty", qty);
+                        obj.Add("percent", weight is 0 ? 100 : weight / totalWeight * 100);
+                        jObj.Add(id, obj);
+                    }
+
+                    file.WriteAllText(jObj.ToString());
+                }
+            }
         }
     }
 }

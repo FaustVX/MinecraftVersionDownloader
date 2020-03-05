@@ -148,6 +148,9 @@ namespace MinecraftVersionDownloader.All
         public static DirectoryInfo Then(this DirectoryInfo directory, string next1, string next2, string next3)
             => new DirectoryInfo(Path.Combine(directory.FullName, next1, next2, next3));
         
+        public static DirectoryInfo Then(this DirectoryInfo directory, params string[] nexts)
+            => new DirectoryInfo(Path.Combine(nexts.Prepend(directory.FullName).ToArray()));
+        
         public static FileInfo File(this DirectoryInfo directory, string filename)
             => new FileInfo(Path.Combine(directory.FullName, filename));
         
