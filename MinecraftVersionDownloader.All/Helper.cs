@@ -25,23 +25,49 @@ namespace MinecraftVersionDownloader.All
         public static Task<Stream> GetStreamAsync(this Uri uri)
             => _httpClient.GetStreamAsync(uri);
 
+        public static Task DownloadFileAsync(this Uri uri, DirectoryInfo directory)
+            => DownloadFileAsync(uri, directory.File(uri.Segments[^1]));
+
         public static Task DownloadFileAsync(this Uri uri, FileInfo file)
-            => _webClient.DownloadFileTaskAsync(uri, file.FullName);
+            => (_webClient.IsBusy ? new WebClient() : _webClient).DownloadFileTaskAsync(uri, file.FullName);
         
-        public static IEnumerable<T> DoEvery<T>(this IEnumerable<T> source, int everyLoop, Action action)
+        public static IEnumerable<T> DoEvery<T>(this IEnumerable<T> source, int everyLoop, Action<T>? before = null, Action<T>? after = null)
         {
             using var enumerator = source.GetEnumerator();
             for (int i = 1; enumerator.MoveNext(); i++)
             {
+                var cond = i % everyLoop == 0;
+                if(cond && before is Action)
+                    before(enumerator.Current);
                 yield return enumerator.Current;
-                if(i % everyLoop == 0)
-                    action();
+                if (cond && after is Action)
+                    after(enumerator.Current);
+            }
+        }
+        
+        public static IEnumerable<T> When<T>(this IEnumerable<T> source, Func<T, bool> condition, Action<T>? before = null, Action<T>? after = null)
+        {
+            using var enumerator = source.GetEnumerator();
+            for (int i = 1; enumerator.MoveNext(); i++)
+            {
+                var cond = condition(enumerator.Current);
+                if(cond && before is Action)
+                    before(enumerator.Current);
+                yield return enumerator.Current;
+                if (cond && after is Action)
+                    after(enumerator.Current);
             }
         }
 
         public static TEnumerable If<TEnumerable>(this TEnumerable source, bool condition, Func<TEnumerable, TEnumerable> ifTrue)
             where TEnumerable : System.Collections.IEnumerable
             => condition ? ifTrue(source) : source;
+
+        public static Task<Task> ContinueWith(this Task task, Task continuation)
+            => task.ContinueWith(async _ => await continuation);
+
+        public static Task<Task<T>> ContinueWith<T>(this Task task, Task<T> continuation)
+            => task.ContinueWith(async _ => await continuation);
         
         public static string MakeRelativeTo(this FileInfo file, FileSystemInfo relativeTo)
         {

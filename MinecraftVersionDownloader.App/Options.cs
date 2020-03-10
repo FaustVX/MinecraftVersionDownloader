@@ -14,7 +14,7 @@ namespace MinecraftVersionDownloader.App
 
         static Options()
         {
-            var args = Environment.GetCommandLineArgs()[1..].ToList();
+            var args = Environment.GetCommandLineArgs()[2..].ToList();
             
             if(HasSwitch('l', "long-run"))
                 LongRun = true;

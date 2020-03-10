@@ -14,6 +14,7 @@ using FaustVX.Temp;
 using Newtonsoft.Json.Linq;
 using static FaustVX.Process.Process;
 using System.Collections.Generic;
+using Octokit;
 
 namespace MinecraftVersionDownloader.App
 {
@@ -36,6 +37,12 @@ namespace MinecraftVersionDownloader.App
             (GitNet.Clone(args[0], checkout: false, localDirectory: ".") || GitNet.Reset(GitNet.Ref.HEAD))
                 .ThrowIfNonZero(new Exception());
 
+            ((DirectoryInfo)git).Then(".git", "info").File("exclude").AppendAllText("*.nbt" + Environment.NewLine);
+            var github = new GitHubClient(new ProductHeaderValue("MinecraftVersionDownloader"))
+            {
+                Credentials = new Credentials(args[1])
+            };
+
             if(Options.OnlyTags)
             {
                 var lastMessage = GitNet.GetLastCommit()?.message;
@@ -43,7 +50,7 @@ namespace MinecraftVersionDownloader.App
                 foreach (var (version, indexFromHead) in (await MinecraftHelper.GetVersionsInfoAsync(reverse: false))
                     .WithIndex()
                     .SkipWhile(v => v.item.Id != lastMessage)
-                    .If(Options.LongRun && !Options.Debug, versions => versions.DoEvery(10, () => GitNet.Push(tags: true, force: true))))
+                    .If(Options.LongRun && !Options.Debug, versions => versions.DoEvery(10, after: _ => GitNet.Push(tags: true, force: true))))
                 {
                     var packages = await version.Version;
 #if DEBUG
@@ -74,8 +81,7 @@ namespace MinecraftVersionDownloader.App
             var java = FaustVX.Process.Process.CreateProcess("java");
             foreach (var version in (await MinecraftHelper.GetVersionsInfoAsync(reverse: true))
                 .SkipWhile(v => v.Id != lastCommit)
-                .Skip(1)
-                .If(Options.LongRun && !Options.Debug, versions => versions.DoEvery(10, () => GitNet.Push())))
+                .Skip(1))
             {
                 var startTime = Stopwatch.GetTimestamp();
                 Console.WriteLine($"Next version: {version.Id}");
@@ -89,18 +95,18 @@ namespace MinecraftVersionDownloader.App
                 var generated = ((DirectoryInfo)git).CreateSubdirectory("generated");
 
                 var server = tmp.File("server.jar");
-                await Task.WhenAll(packages.Server!.JAR.DownloadFileAsync(server), Task.Run(async () =>
-                    {
-                        if(packages.Client.TXT is Uri txtClient)
-                            generated.File("clientMapping.txt").WriteAllText(await txtClient.GetStringAsync());
+                await Task.WhenAll(packages.Server!.JAR.DownloadFileAsync(server), packages.Client.JAR.DownloadFileAsync(tmp), Task.Run(async () =>
+                {
+                    if (packages.Client.TXT is Uri txtClient)
+                        generated.File("clientMapping.txt").WriteAllText(await txtClient.GetStringAsync());
 
-                        if(packages.Server?.TXT is Uri txtServer)
-                            generated.File("serverMapping.txt").WriteAllText(await txtServer.GetStringAsync());
-                    }), Task.Run(async () =>
-                    {
-                        using var jarStream = await packages.Client.JAR.GetStreamAsync();
-                        UnzipFromStream(jarStream, "assets data pack. version.json".Split(' '));
-                    }));
+                    if (packages.Server?.TXT is Uri txtServer)
+                        generated.File("serverMapping.txt").WriteAllText(await txtServer.GetStringAsync());
+                }), Task.Run(async () =>
+                {
+                    using var jarStream = await packages.Client.JAR.GetStreamAsync();
+                    UnzipFromStream(jarStream, "assets data pack. version.json".Split(' '));
+                }));
                 GitNet.Add(all: true);
 
                 System.Console.WriteLine("Create 'generated' files");
@@ -119,14 +125,15 @@ namespace MinecraftVersionDownloader.App
                 GitNet.Add(generated.Then("data").MakeRelativeTo(git));
                 GitNet.Commit(version.Id, allowEmpty: true, date: version.ReleaseTime);
 
-                GitNet.Tag($"Version_{packages.Assets}", force:true);
-                if(version.Type is VersionType.Release)
-                    GitNet.Tag($"Release_{packages.Id}", force:true);
-
+                GitNet.Tag($"Version_{packages.Assets}", force: true);
+                if (version.Type is VersionType.Release)
+                    GitNet.Tag($"Release_{packages.Id}", force: true);
+                
+                await UploadGithubRelease(github, packages);
                 Console.WriteLine(TimeSpan.FromTicks(Stopwatch.GetTimestamp() - startTime));
 #if DEBUG
                 return;
-#endif
+#endif                
             }
 
             DeleteFiles();
@@ -145,6 +152,89 @@ namespace MinecraftVersionDownloader.App
                         dir.Delete(true);
                     else
                         item.Delete();
+                }
+            }
+
+            async Task UploadGithubRelease(GitHubClient github, All.Version packages)
+            {
+                if (!(GitNet.Push(force:false) && GitNet.Push(force:true, tags:true)))
+                    return;
+
+                var result = await GetOrCreateRelease();
+
+                var client = tmp.File("client.jar");
+                await UploadRelease(client, $"client_{packages.Id}.jar");
+                
+                var server = tmp.File("server.jar");
+                if (server.Exists)
+                    await UploadRelease(server, $"server_{packages.Id}.jar");
+
+                await CreateZip("assets");
+                await CreateZip("data");
+
+                var updateRelease = result.ToUpdate();
+                updateRelease.Draft = false;
+                updateRelease.Prerelease = !(packages.Type is VersionType.Release);
+                await github.Repository.Release.Edit("FaustVX", "MinecraftVanillaDatapack", result.Id, updateRelease);
+                
+                
+                async Task CreateZip(string folderName)
+                {
+                    var git1 = ((DirectoryInfo)git);
+                    var folder = git1.Then(folderName);
+                    var buffer = new byte[8 * 1024];
+                    if(folder.Exists)
+                    {
+                        var zipFile = tmp.File($"{folderName}_{packages.Id}.zip");
+                        using (var zip = new ZipOutputStream(zipFile.OpenWrite()))
+                        {
+                            if(git1.File("pack.png") is FileInfo { Exists: true, Name: var namePng } packPng)
+                                PutEntry(packPng, namePng);
+                            if(git1.File("pack.mcmeta") is FileInfo { Exists: true, Name: var nameMeta } packMeta)
+                                PutEntry(packMeta, nameMeta);
+
+                            foreach (var file in folder.EnumerateFiles("*", SearchOption.AllDirectories))
+                                PutEntry(file, file.MakeRelativeTo(git)[2..]);
+
+                            void PutEntry(FileInfo file, string name)
+                            {
+                                zip.PutNextEntry(new ZipEntry(name));
+                                using (var stream = file.OpenRead())
+                                    StreamUtils.Copy(stream, zip, buffer);
+                            }
+                        }
+                        await UploadRelease(zipFile, zipFile.Name);
+                    }
+                }
+
+                async Task UploadRelease(FileInfo file, string name)
+                {
+                    using (var archiveContents = file.OpenRead())
+                        await github.Repository.Release.UploadAsset(result, new ReleaseAssetUpload()
+                        {
+                            FileName = name,
+                            ContentType = "application/zip",
+                            RawData = archiveContents
+                        });
+                }
+
+                async Task<Release> GetOrCreateRelease()
+                {
+                    try
+                    {
+                        var release = await github.Repository.Release.Get("FaustVX", "MinecraftVanillaDatapack", $"Version_{packages.Assets}");
+                        foreach (var asset in release.Assets)
+                            await github.Repository.Release.DeleteAsset("FaustVX", "MinecraftVanillaDatapack", asset.Id);
+                        return release;
+                    }
+                    catch (NotFoundException)
+                    {
+                        return await github.Repository.Release.Create("FaustVX", "MinecraftVanillaDatapack", new NewRelease($"Version_{packages.Assets}")
+                        {
+                            Draft = true,
+                            Prerelease = !(packages.Type is VersionType.Release)
+                        });
+                    }
                 }
             }
         }

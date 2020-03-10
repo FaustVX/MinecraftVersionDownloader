@@ -32,8 +32,8 @@ jobs:
       run: dotnet test
     - name: Execute program (Debug)
       working-directory: ./MinecraftVersionDownloader.App
-      run: dotnet run -c Debug -v q https://${{ secrets.TOKEN }}@github.com/FaustVX/MinecraftVanillaDatapack.git
+      run: dotnet run -c Debug -v q https://${{ secrets.TOKEN }}@github.com/FaustVX/MinecraftVanillaDatapack.git ${{ secrets.TOKEN }}
     - name: Execute program (Release)
       working-directory: ./MinecraftVersionDownloader.App
-      run: dotnet run -c Release -v q https://${{ secrets.TOKEN }}@github.com/FaustVX/MinecraftVanillaDatapack.git --long-run
+      run: dotnet run -c Release -v q https://${{ secrets.TOKEN }}@github.com/FaustVX/MinecraftVanillaDatapack.git ${{ secrets.TOKEN }} --long-run
 
