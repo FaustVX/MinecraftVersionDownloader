@@ -20,7 +20,7 @@ namespace MinecraftVersionDownloader.App
 {
     public static class Program
     {
-        private static async Task Main(string[] args)
+        private static async Task Main()
         {
 #if LOCAL
             var git = new DirectoryInfo(@"D:\Desktop\MinecraftVanillaDatapack");
@@ -34,13 +34,13 @@ namespace MinecraftVersionDownloader.App
             Debugger.Break();
 #endif
             System.Console.WriteLine(Environment.CurrentDirectory);
-            (GitNet.Clone(args[0], checkout: false, localDirectory: ".") || GitNet.Reset(GitNet.Ref.HEAD))
+            (GitNet.Clone(Options.GitRepo.ToString(), checkout: false, localDirectory: ".") || GitNet.Reset(GitNet.Ref.HEAD))
                 .ThrowIfNonZero(new Exception());
 
             ((DirectoryInfo)git).Then(".git", "info").File("exclude").AppendAllText("*.nbt" + Environment.NewLine);
             var github = new GitHubClient(new ProductHeaderValue("MinecraftVersionDownloader"))
             {
-                Credentials = new Credentials(args[1])
+                Credentials = new Credentials(Options.GitHubCreditentials)
             };
 
             if(Options.OnlyTags)
