@@ -13,6 +13,7 @@ using GitNet = Git.Net.Git;
 using Newtonsoft.Json.Linq;
 using static FaustVX.Process.Process;
 using System.Collections.Generic;
+using System.Text.RegularExpressions;
 
 namespace MinecraftVersionDownloader.App
 {
@@ -68,7 +69,8 @@ namespace MinecraftVersionDownloader.App
             var java = FaustVX.Process.Process.CreateProcess("java");
             foreach (var version in (await MinecraftHelper.GetVersionsInfoAsync(reverse: true))
                 .SkipWhile(v => v.Id != lastCommit)
-                .Skip(1))
+                .Skip(1)
+                .Where(version => Regex.IsMatch(version.Id, @"^(\d\.\d+(?:\.\d+)?(?:[- ]pre(?:-release )?\d+)?|\d{2}w\d{2}\w)$", RegexOptions.IgnoreCase)))
             {
                 var startTime = Stopwatch.GetTimestamp();
                 Console.WriteLine($"Next version: {version.Id}");
