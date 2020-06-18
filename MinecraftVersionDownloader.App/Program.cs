@@ -70,7 +70,7 @@ namespace MinecraftVersionDownloader.App
             foreach (var version in (await MinecraftHelper.GetVersionsInfoAsync(reverse: true))
                 .SkipWhile(v => v.Id != lastCommit)
                 .Skip(1)
-                .Where(version => Regex.IsMatch(version.Id, @"^(\d\.\d+(?:\.\d+)?(?:[- ]pre(?:-release )?\d+)?|\d{2}w\d{2}\w)$", RegexOptions.IgnoreCase)))
+                .Where(version => Regex.IsMatch(version.Id, @"^(\d\.\d+(?:\.\d+)?(?:[- ](?:pre(?:-release )?|rc)\d+)?|\d{2}w\d{2}\w)$", RegexOptions.IgnoreCase)))
             {
                 var startTime = Stopwatch.GetTimestamp();
                 Console.WriteLine($"Next version: {version.Id}");
