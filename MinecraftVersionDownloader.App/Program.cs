@@ -209,7 +209,15 @@ namespace MinecraftVersionDownloader.App
             foreach (var obj in JObject.Parse(registries.ReadAllText()).Properties())
             {
                 var (key, entries) = (obj.Name.Split(':')[1], (JObject)obj.Value["entries"]);
-                reports.File($"{key}.txt").WriteAllLines(entries.Properties().Select(p => p.Name));
+                CreateLocalReportFileInfo(reports, key.Split('/')).WriteAllLines(entries.Properties().Select(p => p.Name));
+
+                static FileInfo CreateLocalReportFileInfo(DirectoryInfo reports, string[] keys)
+                {
+                    if (keys.Length == 1)
+                        return reports.File($"{keys[^1]}.txt");
+                    else
+                        return CreateLocalReportFileInfo(reports.CreateSubdirectory(keys[0]), keys[1..]); //reports.Then(keys[..^1]).File($"{keys[^1]}.txt");
+                }
             }
         }
 
