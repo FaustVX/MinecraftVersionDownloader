@@ -30,7 +30,7 @@ namespace MinecraftVersionDownloader.All
 
         public static Task DownloadFileAsync(this Uri uri, FileInfo file)
             => (_webClient.IsBusy ? new WebClient() : _webClient).DownloadFileTaskAsync(uri, file.FullName);
-        
+
         public static IEnumerable<T> DoEvery<T>(this IEnumerable<T> source, int everyLoop, Action<T>? before = null, Action<T>? after = null)
         {
             using var enumerator = source.GetEnumerator();
@@ -44,7 +44,7 @@ namespace MinecraftVersionDownloader.All
                     after(enumerator.Current);
             }
         }
-        
+
         public static IEnumerable<T> When<T>(this IEnumerable<T> source, Func<T, bool> condition, Action<T>? before = null, Action<T>? after = null)
         {
             using var enumerator = source.GetEnumerator();
@@ -68,7 +68,7 @@ namespace MinecraftVersionDownloader.All
 
         public static Task<Task<T>> ContinueWith<T>(this Task task, Task<T> continuation)
             => task.ContinueWith(async _ => await continuation);
-        
+
         public static string MakeRelativeTo(this FileInfo file, FileSystemInfo relativeTo)
         {
             if (relativeTo is DirectoryInfo di)
@@ -87,7 +87,7 @@ namespace MinecraftVersionDownloader.All
 
             throw new InvalidCastException();
         }
-        
+
         public static string MakeRelativeTo(this DirectoryInfo directory, FileSystemInfo relativeTo)
         {
             if(!directory.FullName.EndsWith(Path.DirectorySeparatorChar))
@@ -108,12 +108,12 @@ namespace MinecraftVersionDownloader.All
 
             throw new InvalidCastException();
         }
-        
+
         private static string MakeRelativeTo(FileSystemInfo file, DirectoryInfo relativeTo)
         {
             if (file.FullName.StartsWith(relativeTo.FullName))
                 return "." + Path.DirectorySeparatorChar + file.FullName.Remove(0, relativeTo.FullName.Length);
-            
+
             var sbRel = new StringBuilder(relativeTo.FullName);
             var sbFile = new StringBuilder(file.FullName);
 
@@ -145,7 +145,7 @@ namespace MinecraftVersionDownloader.All
         public static IEnumerable<T> IfEmpty<T>(this IEnumerable<T> source, Action empty, Action nonEmpty)
         {
             var isEmpty = true;
-            
+
             foreach (var item in source)
             {
                 isEmpty = false;
@@ -157,44 +157,44 @@ namespace MinecraftVersionDownloader.All
             else
                 nonEmpty();
         }
-        
+
         public static IEnumerable<(T item, int index)> WithIndex<T>(this IEnumerable<T> source, int startAt = 0)
         {
             using var enumerator = source.GetEnumerator();
             for (int i = startAt; enumerator.MoveNext(); i++)
                 yield return (enumerator.Current, i);
         }
-        
+
         public static DirectoryInfo Then(this DirectoryInfo directory, string next)
             => new DirectoryInfo(Path.Combine(directory.FullName, next));
-        
+
         public static DirectoryInfo Then(this DirectoryInfo directory, string next1, string next2)
             => new DirectoryInfo(Path.Combine(directory.FullName, next1, next2));
-        
+
         public static DirectoryInfo Then(this DirectoryInfo directory, string next1, string next2, string next3)
             => new DirectoryInfo(Path.Combine(directory.FullName, next1, next2, next3));
-        
+
         public static DirectoryInfo Then(this DirectoryInfo directory, params string[] nexts)
             => new DirectoryInfo(Path.Combine(nexts.Prepend(directory.FullName).ToArray()));
-        
+
         public static FileInfo File(this DirectoryInfo directory, string filename)
             => new FileInfo(Path.Combine(directory.FullName, filename));
-        
+
         public static void AppendAllText(this FileInfo file, string content)
             => IO.File.AppendAllText(file.FullName, content);
-        
+
         public static void AppendAllLines(this FileInfo file, IEnumerable<string> contents)
             => IO.File.AppendAllLines(file.FullName, contents);
-        
+
         public static void WriteAllText(this FileInfo file, string content)
             => IO.File.WriteAllText(file.FullName, content);
-        
+
         public static void WriteAllLines(this FileInfo file, IEnumerable<string> contents)
             => IO.File.WriteAllLines(file.FullName, contents);
-        
+
         public static string ReadAllText(this FileInfo file)
             => IO.File.ReadAllText(file.FullName);
-        
+
         public static string[] ReadAllLines(this FileInfo file)
             => IO.File.ReadAllLines(file.FullName);
     }

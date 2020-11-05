@@ -54,7 +54,7 @@ namespace MinecraftVersionDownloader.App
                         is1_8 = true;
                     else if(is1_8 is true && packages.Assets != "1.9")
                         break;
-                    
+
                     GitNet.Tag($"Version_{packages.Assets}", @ref: ^indexFromHead, force: false);
                     if(packages.Type is VersionType.Release)
                         GitNet.Tag($"Release_{packages.Id}", @ref: ^indexFromHead, force: false);
@@ -117,12 +117,12 @@ namespace MinecraftVersionDownloader.App
                 GitNet.Tag($"Version_{packages.Assets}", force: true);
                 if (version.Type is VersionType.Release)
                     GitNet.Tag($"Release_{packages.Id}", force: true);
-                
+
                 await Globals.UploadGithubRelease(packages);
                 Console.WriteLine(TimeSpan.FromTicks(Stopwatch.GetTimestamp() - startTime));
 #if DEBUG
                 return;
-#endif                
+#endif
             }
 
             DeleteFiles();
@@ -192,7 +192,7 @@ namespace MinecraftVersionDownloader.App
         {
             if (!items.Exists)
                 return;
-            
+
             var reports = items.Directory.CreateSubdirectory("registries");
 
             var obj = JObject.Parse(items.ReadAllText());
@@ -203,7 +203,7 @@ namespace MinecraftVersionDownloader.App
         {
             if (!registries.Exists)
                 return;
-            
+
             var reports = registries.Directory.CreateSubdirectory("registries");
 
             foreach (var obj in JObject.Parse(registries.ReadAllText()).Properties())
@@ -225,14 +225,14 @@ namespace MinecraftVersionDownloader.App
         {
             if (!blocks.Exists)
                 return;
-            
+
             var reports = blocks.Directory;
 
             var jObj = JObject.Parse(blocks.ReadAllText());
 
             foreach (var obj in jObj.Properties())
                 obj.Value = obj.Value["properties"] ?? new JObject();
-            
+
             reports.File("blocks.simple.json").WriteAllText(jObj.ToString());
         }
 
@@ -256,7 +256,7 @@ namespace MinecraftVersionDownloader.App
 
                 foreach (var file in currentDir.EnumerateFiles("*.json", SearchOption.TopDirectoryOnly))
                     WriteToFile(ExtractFile(file), generated.File(file.Name));
-                
+
                 Dictionary<string, (float weight, float qty)> ExtractFile(FileInfo file)
                 {
                     var json = JObject.Parse(file.ReadAllText());
@@ -270,7 +270,7 @@ namespace MinecraftVersionDownloader.App
                         foreach (var entry in ((JArray)pool["entries"]).Cast<JObject>())
                         {
                             var setCount = GetFunction(entry, "set_count")?["count"];
-                            
+
                             switch (entry.Value<string>("type").Split(':')[^1])
                             {
                                 case "item":
@@ -297,7 +297,7 @@ namespace MinecraftVersionDownloader.App
                                     name += n;
                                 if(GetAverage(GetFunction(entry, "enchant_with_levels")?["levels"]) is float l)
                                     name += $"/enchant:{l:#.#}L";
-                                
+
                                 if(items.TryGetValue(name, out var value))
                                     items[name] = ((weight * rolls) + value.weight, (value.weight * value.qty + weight * rolls * qty) / (value.weight + weight * rolls));
                                 else

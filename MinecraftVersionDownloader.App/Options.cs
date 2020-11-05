@@ -28,10 +28,10 @@ namespace MinecraftVersionDownloader.App
 #else
             args.RemoveRange(0, 1);
 #endif
-            
+
             if(HasSwitch('l', "long-run"))
                 LongRun = true;
-            
+
             if(HasSwitch('t', "tags"))
                 OnlyTags = true;
 #if DEBUG

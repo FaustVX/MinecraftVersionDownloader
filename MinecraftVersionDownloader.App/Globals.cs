@@ -44,7 +44,7 @@ namespace MinecraftVersionDownloader.App
 
             var client = Globals.Tmp.File("client.jar");
             await UploadRelease(client, $"client_{packages.Id}.jar");
-            
+
             var server = Globals.Tmp.File("server.jar");
             if (server.Exists)
                 await UploadRelease(server, $"server_{packages.Id}.jar");
@@ -56,8 +56,8 @@ namespace MinecraftVersionDownloader.App
             updateRelease.Draft = false;
             updateRelease.Prerelease = !(packages.Type is VersionType.Release);
             await Github.Repository.Release.Edit("FaustVX", "MinecraftVanillaDatapack", result.Id, updateRelease);
-            
-            
+
+
             async Task CreateZip(string folderName)
             {
                 var git1 = ((DirectoryInfo)Globals.Git);
