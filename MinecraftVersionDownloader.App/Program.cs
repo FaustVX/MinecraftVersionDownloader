@@ -110,6 +110,7 @@ namespace MinecraftVersionDownloader.App
                 ExtractBlocks(reports.File("blocks.json"));
                 ExtractLootTables((DirectoryInfo)Globals.Git, generated, "data", "minecraft", "loot_tables");
                 AddPackMcmeta(JObject.Parse(File.ReadAllText(Path.Combine("assets", "minecraft", "lang", "en_us.json"))), JObject.Parse(File.ReadAllText("version.json")));
+                generated.File(version.Id + ".json").WriteAllText((await version.Json.Value).ToString(Formatting.Indented));
 
                 using(var serverDir = new FaustVX.Temp.TemporaryDirectory(generated.Then("server"), true))
                 {
@@ -121,6 +122,7 @@ namespace MinecraftVersionDownloader.App
                 GitNet.Add(generated.Then("assets").MakeRelativeTo(Globals.Git));
                 GitNet.Add(generated.Then("data").MakeRelativeTo(Globals.Git));
                 GitNet.Add("*.mcmeta");
+                GitNet.Add(generated.File("*.json").MakeRelativeTo(Globals.Git));
                 GitNet.Commit(version.Id, allowEmpty: true, date: version.ReleaseTime);
 
                 GitNet.Tag($"Version_{packages.Assets}", force: true);

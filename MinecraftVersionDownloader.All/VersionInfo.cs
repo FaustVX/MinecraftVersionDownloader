@@ -1,5 +1,5 @@
 ﻿using System;
-using System.Threading.Tasks;
+using Newtonsoft.Json.Linq;
 
 namespace MinecraftVersionDownloader.All
 {
@@ -11,7 +11,8 @@ namespace MinecraftVersionDownloader.All
             Type = type;
             Time = time;
             ReleaseTime = releaseTime;
-            Version = new AsyncLazy<Version>(() => GetVersionsAsync(url));
+            Json = new AsyncLazy<JObject>(async () => await url.GetJsonAsync());
+            Version = new AsyncLazy<Version>(async () => GetVersionsAsync(await Json.Value));
         }
 
         public string Id { get; }
@@ -19,9 +20,10 @@ namespace MinecraftVersionDownloader.All
         public DateTime Time { get; }
         public DateTime ReleaseTime { get; }
         public AsyncLazy<Version> Version { get; }
+        public AsyncLazy<JObject> Json { get; }
 
-        private static async Task<Version> GetVersionsAsync(Uri uri)
-            => (await uri.GetJsonAsync()).ToObject<Version>();
+        private static Version GetVersionsAsync(JObject jObject)
+            => jObject.ToObject<Version>();
 
         public override string? ToString()
             => $"[{Type}] {Id}";
