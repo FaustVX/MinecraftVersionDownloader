@@ -70,8 +70,6 @@ namespace MinecraftVersionDownloader.App
                     {
                         if(git1.File("pack.png") is FileInfo { Exists: true, Name: var namePng } packPng)
                             PutEntry(packPng, namePng);
-                        if(git1.File("pack.mcmeta") is FileInfo { Exists: true, Name: var nameMeta } packMeta)
-                            PutEntry(packMeta, nameMeta);
 
                         foreach (var file in folder.EnumerateFiles("*", SearchOption.AllDirectories))
                             PutEntry(file, file.MakeRelativeTo(Globals.Git)[2..]);

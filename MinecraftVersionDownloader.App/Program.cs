@@ -10,6 +10,7 @@ using System.Linq;
 using System.Diagnostics;
 using MinecraftVersionDownloader.All;
 using GitNet = Git.Net.Git;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using static FaustVX.Process.Process;
 using System.Collections.Generic;
@@ -108,10 +109,18 @@ namespace MinecraftVersionDownloader.App
                 ExtractRegisties(reports.File("registries.json"));
                 ExtractBlocks(reports.File("blocks.json"));
                 ExtractLootTables((DirectoryInfo)Globals.Git, generated, "data", "minecraft", "loot_tables");
+                AddPackMcmeta(JObject.Parse(File.ReadAllText(Path.Combine("assets", "minecraft", "lang", "en_us.json"))), JObject.Parse(File.ReadAllText("version.json")));
+
+                using(var serverDir = new FaustVX.Temp.TemporaryDirectory(generated.Then("server"), true))
+                {
+                    java($"-jar {server.MakeRelativeTo(serverDir)} --nogui").StartAndWaitForExit();
+                    GitNet.Add("*.properties");
+                }
 
                 GitNet.Add(reports.MakeRelativeTo(Globals.Git));
                 GitNet.Add(generated.Then("assets").MakeRelativeTo(Globals.Git));
                 GitNet.Add(generated.Then("data").MakeRelativeTo(Globals.Git));
+                GitNet.Add("*.mcmeta");
                 GitNet.Commit(version.Id, allowEmpty: true, date: version.ReleaseTime);
 
                 GitNet.Tag($"Version_{packages.Assets}", force: true);
@@ -340,6 +349,31 @@ namespace MinecraftVersionDownloader.App
 
                     file.WriteAllText(jObj.ToString());
                 }
+            }
+        }
+
+        private static void AddPackMcmeta(JObject lang, JObject version)
+        {
+            if(((DirectoryInfo)Globals.Git).File("pack.mcmeta").Exists)
+                return;
+
+            AddPackMcmeta("data", "data");
+            AddPackMcmeta("resource", "assets");
+
+            void AddPackMcmeta(string packType, string folder)
+            {
+                var obj = new JObject()
+                    {
+                        {
+                            "pack", new JObject()
+                            {
+                                { "description", lang[packType + "Pack.vanilla.description"].Value<string>() },
+                                { "pack_format", version["pack_version"][packType].Value<string>() }
+                            }
+                        }
+                    };
+
+                    ((DirectoryInfo)Globals.Git).Then(folder).File("pack.mcmeta").WriteAllText(obj.ToString(Formatting.Indented));
             }
         }
     }
