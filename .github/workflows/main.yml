@@ -16,7 +16,7 @@ jobs:
       with:
         dotnet-version: '3.1.100'
     - name: Setup Nuget.exe
-      uses: warrenbuckley/Setup-Nuget@v1
+      uses: nuget/setup-nuget@v1
     - run: |
         nuget sources Add -Name "GitHub" -Source "https://nuget.pkg.github.com/FaustVX/index.json" -UserName FaustVX -Password ${{ secrets.TOKEN }}
         nuget setApiKey ${{ secrets.TOKEN }} -source "GitHub"
