@@ -14,7 +14,7 @@ jobs:
     - run: |
         git config --global user.email "jodu035@gmail.com"
         git config --global user.name "FaustVX"
-    - uses: actions/setup-dotnet@v1.4.0
+    - uses: actions/setup-dotnet@v1.7.2
       with:
         dotnet-version: '3.1.100'
     - uses: warrenbuckley/Setup-Nuget@v1
