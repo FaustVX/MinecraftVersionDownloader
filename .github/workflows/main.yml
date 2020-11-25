@@ -12,11 +12,11 @@ jobs:
         git config --global user.email "jodu035@gmail.com"
         git config --global user.name "FaustVX"
     - uses: actions/checkout@v1
-    - uses: actions/setup-dotnet@v1.4.0
+    - uses: actions/setup-dotnet@v1.7.2
       with:
         dotnet-version: '3.1.100'
     - name: Setup Nuget.exe
-      uses: warrenbuckley/Setup-Nuget@v1
+      uses: nuget/setup-nuget@v1
     - run: |
         nuget sources Add -Name "GitHub" -Source "https://nuget.pkg.github.com/FaustVX/index.json" -UserName FaustVX -Password ${{ secrets.TOKEN }}
         nuget setApiKey ${{ secrets.TOKEN }} -source "GitHub"
