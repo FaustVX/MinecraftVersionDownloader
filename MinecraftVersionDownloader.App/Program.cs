@@ -108,6 +108,7 @@ namespace MinecraftVersionDownloader.App
                 ExtractItems(reports.File("items.json"));
                 ExtractRegisties(reports.File("registries.json"));
                 ExtractBlocks(reports.File("blocks.json"));
+                ExtractRecipes(reports.File("recipes.json"), ((DirectoryInfo)Globals.Git).Then("data", "minecraft", "tags", "items"), ((DirectoryInfo)Globals.Git).Then("data", "minecraft", "recipes"));
                 ExtractLootTables((DirectoryInfo)Globals.Git, generated, "data", "minecraft", "loot_tables");
                 AddPackMcmeta(JObject.Parse(File.ReadAllText(Path.Combine("assets", "minecraft", "lang", "en_us.json"))), JObject.Parse(File.ReadAllText("version.json")));
                 generated.File(version.Id + ".json").WriteAllText((await version.Json.Value).ToString(Formatting.Indented));
@@ -245,6 +246,63 @@ namespace MinecraftVersionDownloader.App
                 obj.Value = obj.Value["properties"] ?? new JObject();
 
             reports.File("blocks.simple.json").WriteAllText(jObj.ToString());
+        }
+
+        private static void ExtractRecipes(FileInfo recipesFile, DirectoryInfo itemTags, DirectoryInfo data)
+        {
+            var tags = itemTags.EnumerateFiles().ToDictionary(file => Path.GetFileNameWithoutExtension(file.Name), file => CreateTags(file).ToArray());
+            var recipes = new JObject(data.EnumerateFiles()
+                .Select(Helper.ReadAllText)
+                .Select(JObject.Parse)
+                .SelectMany(GetInfo)
+                .OrderBy(t => t.ingredient)
+                .GroupBy(t => t.ingredient)
+                .Select(g => new JProperty(g.Key, new JObject(g.OrderBy(t => t.recipe).GroupBy(t => t.recipe).Select(g1 => new JProperty(g1.Key, new JArray(g1.Select(t => t.result).ToHashSet()))))))
+            );
+
+            recipesFile.WriteAllText(recipes.ToString());
+
+            IEnumerable<(string ingredient, JToken result, string recipe)> GetInfo(JObject obj)
+            {
+                var type = obj["type"].ToString();
+                return type switch
+                {
+                    "minecraft:blasting" or "minecraft:smelting" or "minecraft:campfire_cooking" or "minecraft:smoking"
+                        => GetItems(obj["ingredient"], tags).Select(i => (i, (JToken)new JObject(new JProperty("result", obj["result"]), new JProperty("experience", obj["experience"]), new JProperty("cookingtime", obj["cookingtime"])), type)),
+                    "minecraft:crafting_shaped" => ((JObject)obj["key"]).Properties().Select(p => p.Value).SelectMany(i => GetItems(i, tags)).Select(i => (i, obj["result"]["item"], type)),
+                    "minecraft:crafting_shapeless" => GetItems(obj["ingredients"], tags).Select(i => (i, obj["result"]["item"], type)),
+                    "minecraft:smithing" => GetItems(obj["base"], tags).Concat(GetItems(obj["addition"], tags)).ToHashSet().Select(i => (i, obj["result"]["item"], type)),
+                    "minecraft:stonecutting" => GetItems(obj["ingredient"], tags).Select(i => (i, obj["result"], type)),
+                    _ => Enumerable.Empty<(string ingredient, JToken result, string recipe)>()
+                };
+            }
+
+            static IEnumerable<string> GetItems(JToken token, Dictionary<string, string[]> tags)
+            {
+                switch (token)
+                {
+                    case JArray arr:
+                        return arr.SelectMany(t => GetItems(t, tags));
+                    case JObject { First: JProperty { Name: "item", Value: JToken { Type: JTokenType.String } item } }:
+                        return Enumerable.Repeat(item.ToString(), 1);
+                    case JObject { First: JProperty { Name: "tag", Value: JToken { Type: JTokenType.String } tag } }:
+                        return tags[tag.ToString().Split(':')[1]];
+                    default:
+                        return Enumerable.Empty<string>();
+                }
+            }
+
+            static IEnumerable<string> CreateTags(FileInfo file)
+            {
+                foreach (var item in ((JArray)JObject.Parse(file.ReadAllText())["values"]).Select(item => item.ToString()))
+                {
+                    if (item.StartsWith('#'))
+                        foreach (var i in CreateTags(file.Directory.File(item.Split(':')[1] + ".json")))
+                            yield return i;
+                    else
+                        yield return item;
+                }
+            }
         }
 
         private static void ExtractLootTables(DirectoryInfo git, DirectoryInfo generated, params string[] relativeFolders)
