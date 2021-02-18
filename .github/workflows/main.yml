@@ -27,8 +27,6 @@ jobs:
         architecture: x64
     - name: build
       run: dotnet build
-    - name: test
-      run: dotnet test
     - name: Execute program (Debug)
       working-directory: ./MinecraftVersionDownloader.App
       run: dotnet run -c Debug -v q https://${{ secrets.TOKEN }}@github.com/FaustVX/MinecraftVanillaDatapack.git ${{ secrets.TOKEN }}
