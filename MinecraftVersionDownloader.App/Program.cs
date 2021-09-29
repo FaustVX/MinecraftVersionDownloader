@@ -100,7 +100,7 @@ namespace MinecraftVersionDownloader.App
                 GitNet.Add(all: true);
 
                 System.Console.WriteLine("Create 'generated' files");
-                java($"-cp {server.MakeRelativeTo(Globals.Git)} net.minecraft.data.Main --dev --reports --input {((DirectoryInfo)Globals.Git).MakeRelativeTo(Globals.Git)}")
+                java($"-jar {server.MakeRelativeTo(Globals.Git)} DbundlerMainClass=net.minecraft.data.Main --dev --reports --input {((DirectoryInfo)Globals.Git).MakeRelativeTo(Globals.Git)}")
                     .StartAndWaitForExit();
 
                 var reports = generated.Then("reports");
