@@ -25,7 +25,7 @@ jobs:
         nuget setApiKey ${{ secrets.TOKEN }} -source "GitHub"
     - uses: actions/setup-java@v1
       with:
-        java-version: '9.0.4'
+        java-version: '16'
         java-package: jdk
         architecture: x64
     - name: build
